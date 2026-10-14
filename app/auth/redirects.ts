@@ -1,25 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ROUTES } from "@/lib/routes";
 
 /** Which way an email link was headed: confirming a new account, or resetting a password. */
 export type EmailFlow = "signup" | "recovery";
-
-/**
- * Only ever redirect within this app — never to a caller-supplied host.
- * Resolved rather than pattern-matched: browsers read `/\evil.com` as
- * `//evil.com`, which a "starts with / but not //" check lets through. The
- * resolved path is checked too, since `/.//evil.com` tidies up into
- * `//evil.com`.
- */
-export function safeNext(value: string | null, fallback = "/"): string {
-  if (!value?.startsWith("/")) return fallback;
-  try {
-    const url = new URL(value, "http://localhost");
-    if (url.origin !== "http://localhost" || url.pathname.startsWith("//")) return fallback;
-    return url.pathname + url.search + url.hash;
-  } catch {
-    return fallback;
-  }
-}
 
 /** Redirect to a path on this app, handing the page a result in its query string. */
 export function redirectTo(request: NextRequest, path: string, params: Record<string, string> = {}) {
@@ -43,11 +26,11 @@ export function redirectTo(request: NextRequest, path: string, params: Record<st
  */
 export function deadLink(request: NextRequest, flow: EmailFlow) {
   return flow === "recovery"
-    ? redirectTo(request, "/account/password", {
+    ? redirectTo(request, ROUTES.password, {
         auth_email: "forgot",
         auth_error: "That reset link has expired or was already used. Request a new one.",
       })
-    : redirectTo(request, "/account", {
+    : redirectTo(request, ROUTES.signIn, {
         auth_email: "login",
         auth_error:
           "That confirmation link has expired or was already used. Log in if you've confirmed your email already, or sign up again for a new link.",
@@ -62,12 +45,12 @@ export function deadLink(request: NextRequest, flow: EmailFlow) {
  */
 export function codeUnusable(request: NextRequest, flow: EmailFlow) {
   return flow === "recovery"
-    ? redirectTo(request, "/account/password", {
+    ? redirectTo(request, ROUTES.password, {
         auth_email: "forgot",
         auth_error:
           "That reset link has expired or was opened in a different browser. Request a new one.",
       })
-    : redirectTo(request, "/account", {
+    : redirectTo(request, ROUTES.signIn, {
         auth_email: "login",
         auth_notice: "Your email is confirmed. Log in to continue.",
       });

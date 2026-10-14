@@ -4,14 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
+import { useLiveRun } from "@/components/features/analyze/useLiveRun";
 import UserMenu from "@/components/features/auth/UserMenu";
+import { ROUTES } from "@/lib/routes";
 
 const LINKS = [
-  { href: "/", label: "Home" },
-  { href: "/due-diligence", label: "Due Diligence" },
-  // The route keeps its original name; only the label changed.
-  { href: "/playbook", label: "Context" },
+  { href: ROUTES.home, label: "Home" },
+  { href: ROUTES.decks, label: "Dashboard" },
+  // The public write-up; inside the app the same text is /app/context.
+  { href: ROUTES.playbook, label: "Context" },
 ];
 
 /**
@@ -23,17 +24,11 @@ const LINKS = [
  * Shows a glowing pill while an analysis runs in the background.
  */
 export default function NavBar() {
-  const { status, stream, currentId } = useAnalysis();
+  const run = useLiveRun();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
-  const loading = status === "loading";
   // Only the home page has a dark card under the nav to merge into.
   const onCard = pathname === "/" && !scrolled;
-  const activeIndex = stream.steps.findIndex((s) => s.status === "active");
-  const activeLabel = activeIndex === -1 ? "Working" : stream.steps[activeIndex].label;
-  // 1-indexed "current step" (not a count of completed steps) — so progress
-  // reads 1/5 → 5/5 rather than 0/5 → 4/5, matching CurrentAnalysisCard.
-  const currentStep = activeIndex === -1 ? stream.steps.length : activeIndex + 1;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -76,9 +71,9 @@ export default function NavBar() {
         </Link>
 
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-          {loading && currentId && (
+          {run && (
             <Link
-              href={`/due-diligence/${currentId}`}
+              href={run.href}
               className={
                 "flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm font-medium transition-colors duration-300 sm:px-3.5 " +
                 (onCard
@@ -90,8 +85,8 @@ export default function NavBar() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
               </span>
-              <span className="tabular-nums">{currentStep}/{stream.steps.length}</span>
-              <span className="hidden sm:inline">{activeLabel}…</span>
+              <span className="tabular-nums">{run.step}/{run.steps}</span>
+              <span className="hidden sm:inline">{run.label}…</span>
             </Link>
           )}
           {LINKS.map((link) => {

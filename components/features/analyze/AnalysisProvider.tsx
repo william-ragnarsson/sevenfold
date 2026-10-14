@@ -23,6 +23,7 @@ import {
   type AnalysisSummary,
 } from "@/lib/analyses/store";
 import type { SampleDeck } from "@/lib/samples/airbnb";
+import { analysisPath } from "@/lib/routes";
 
 const EMPTY_HISTORY: AnalysisSummary[] = [];
 
@@ -123,7 +124,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       // state changed left the button sitting there looking dead for the whole
       // handshake. Both outcomes land on this same URL anyway.
       //
-      // It has to be the full claim, not just the push: `/due-diligence/[id]`
+      // It has to be the full claim, not just the push: the report page
       // decides it is showing a live run from `currentId`, so navigating
       // without setting it flashes "This analysis isn't available" until the
       // lookup returns.
@@ -131,7 +132,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       setStatus("loading");
       setError("");
       dispatch({ type: "reset" });
-      router.push(`/due-diligence/${id}`);
+      router.push(analysisPath(id));
 
       // Both of these are conveniences, not gates, so neither is allowed to take
       // the run down with it — and now that the loading state is already on

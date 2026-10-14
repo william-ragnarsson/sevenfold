@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Archivo, Geist_Mono } from "next/font/google";
-import LayoutShell from "@/components/layout/LayoutShell";
 import AnalysisProvider from "@/components/features/analyze/AnalysisProvider";
 import AuthProvider from "@/components/features/auth/AuthProvider";
 import "./globals.css";
@@ -49,11 +48,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             consumes useAuth(). This layout stays a static server component —
             the session is read client-side, which keeps the landing page
             statically rendered. Nothing here is gated, so there's no need to
-            know who the user is before the first paint. */}
+            know who the user is before the first paint. The chrome around the
+            page comes from the route groups: (marketing) has the floating nav
+            and footer, (app) the dashboard's sidebar. Both sit inside these
+            providers, so a run keeps going across the two. */}
         <AuthProvider>
-          <AnalysisProvider>
-            <LayoutShell>{children}</LayoutShell>
-          </AnalysisProvider>
+          <AnalysisProvider>{children}</AnalysisProvider>
         </AuthProvider>
       </body>
     </html>

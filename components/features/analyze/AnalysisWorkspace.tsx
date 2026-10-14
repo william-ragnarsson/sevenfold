@@ -7,7 +7,7 @@ import SavePrompt from "@/components/features/auth/SavePrompt";
 import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
 
 /**
- * The analysis workspace used by /due-diligence: the labelled upload + run
+ * The analysis workspace used by /app/decks: the labelled upload + run
  * controls with saved analyses below. (The home page hoists the launcher into
  * the hero card instead and renders RecentAnalyses on its own.)
  *

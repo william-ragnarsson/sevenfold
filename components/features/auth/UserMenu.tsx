@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import SignInCard from "./SignInCard";
+import { ROUTES } from "@/lib/routes";
 
 /**
  * The nav's account control: a "Log in / Sign up" pill until there's a real
@@ -138,7 +139,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
             )}
           </div>
           <Link
-            href="/due-diligence"
+            href={ROUTES.decks}
             role="menuitem"
             onClick={() => setOpenFor(null)}
             className="block px-4 py-2.5 text-sm text-ink transition-colors hover:bg-ink/[0.04]"
@@ -146,7 +147,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
             My analyses
           </Link>
           <Link
-            href="/account"
+            href={ROUTES.settings}
             role="menuitem"
             onClick={() => setOpenFor(null)}
             className="block px-4 py-2.5 text-sm text-ink transition-colors hover:bg-ink/[0.04]"

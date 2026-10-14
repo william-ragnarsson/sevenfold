@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { isAuthProviderId } from "@/components/features/auth/providers";
-import { codeUnusable, deadLink, redirectTo, safeNext, type EmailFlow } from "../redirects";
+import { safeNext } from "@/lib/routes";
+import { codeUnusable, deadLink, redirectTo, type EmailFlow } from "../redirects";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
