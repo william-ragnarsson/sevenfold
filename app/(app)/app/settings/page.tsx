@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { hasPassword, loginProviders } from "@/components/features/auth/providers";
-import SignInCard from "@/components/features/auth/SignInCard";
 import RecentAnalyses from "@/components/features/analyze/RecentAnalyses";
 import PageHead, { PAGE } from "@/components/app-shell/PageHead";
 import { ROUTES } from "@/lib/routes";
@@ -19,18 +18,9 @@ export default function SettingsPage() {
 
   if (!configured) return null;
 
-  if (loading) {
+  // Signed out mid-visit, AppShell is already on its way to the home page.
+  if (loading || !isIdentified) {
     return <div className={PAGE + " text-muted"}>Loading…</div>;
-  }
-
-  if (!isIdentified) {
-    return (
-      <div className={PAGE}>
-        <div className="max-w-sm">
-          <SignInCard title="Sign in to your account" />
-        </div>
-      </div>
-    );
   }
 
   const email = user?.email ?? "";

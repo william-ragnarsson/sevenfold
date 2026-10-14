@@ -15,26 +15,27 @@ import {
 } from "@/components/features/auth/AuthFormParts";
 import { NEEDS_FRESH_LOGIN } from "@/components/features/auth/authErrors";
 import { hasPassword } from "@/components/features/auth/providers";
-import SignInCard from "@/components/features/auth/SignInCard";
 import { ROUTES } from "@/lib/routes";
 
 /**
  * Where a password is set or changed: from the settings page, or straight
- * from a reset link, which signs the user in on its way here. Signed out —
- * a reset link that failed, or an old bookmark — it offers to send a new one.
+ * from a reset link, which signs the user in on its way here. A reset link
+ * that failed never gets this far: it lands on `/sign-in`, on the form that
+ * sends a new one (see `app/auth/redirects.ts`).
  */
 export default function PasswordPage() {
   const { user, isIdentified, loading, configured } = useAuth();
 
   if (!configured) return null;
 
-  if (loading) {
+  // Signed out mid-visit, AppShell is already on its way to the home page.
+  if (loading || !isIdentified || !user) {
     return <div className="mx-auto max-w-3xl px-6 pt-10 text-muted">Loading…</div>;
   }
 
   return (
     <div className="mx-auto max-w-sm px-4 pt-10 pb-20">
-      {isIdentified && user ? <SetPasswordCard user={user} /> : <SignInCard emailMode="forgot" />}
+      <SetPasswordCard user={user} />
     </div>
   );
 }

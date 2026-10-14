@@ -6,7 +6,7 @@ const stats = [
   { value: "800+ pitch decks", label: "The training set behind the model" },
   { value: "Custom-trained AI", label: "Built on 800+ real VC verdicts" },
   { value: "Every claim sourced", label: "Tagged deck, web, or inference" },
-  { value: "Free, no sign-up", label: "No account, no card, no catch" },
+  { value: "Free account", label: "Google or email, no card" },
 ];
 
 /** The words that cycle through the headline — each one is something the engine scores. */

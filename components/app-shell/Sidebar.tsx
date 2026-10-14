@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { useLiveRun, type LiveRun } from "@/components/features/analyze/useLiveRun";
-import { ROUTES, signInPath } from "@/lib/routes";
+import { ROUTES } from "@/lib/routes";
 
 /** Associate's `.side-item`: a quiet row that turns white on the page you're on. */
 const ITEM =
@@ -130,38 +130,15 @@ function Avatar({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Who's signed in, pinned to the bottom, leading to their settings. Until
- * there's a real account it offers one, coming back here afterwards.
- */
+/** Who's signed in, pinned to the bottom, leading to their settings. */
 function UserBlock({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const { user, isIdentified, loading, configured } = useAuth();
 
   // No Supabase project configured: accounts aren't part of this deployment.
   if (!configured) return null;
-  // Hold the space until the session resolves, so it doesn't flash "Log in".
-  if (loading) return <div className="mt-auto h-[54px] shrink-0" aria-hidden />;
-
-  if (!isIdentified) {
-    return (
-      <Link
-        href={signInPath(pathname)}
-        onClick={onNavigate}
-        className={ITEM + "mt-auto items-center py-2 " + ITEM_OFF}
-      >
-        <Avatar>
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21a8 8 0 0 1 16 0" strokeLinecap="round" />
-          </svg>
-        </Avatar>
-        <span className="min-w-0">
-          <span className="block text-[13px] font-semibold text-white">Log in / Sign up</span>
-          <span className="block text-xs text-on-ink-muted">Keep your reports</span>
-        </span>
-      </Link>
-    );
-  }
+  // Hold the space until the session resolves. Signed out mid-visit, AppShell
+  // is already on its way to the home page.
+  if (loading || !isIdentified) return <div className="mt-auto h-[54px] shrink-0" aria-hidden />;
 
   const email = user?.email ?? "";
   const name = (user?.user_metadata?.full_name as string | undefined) ?? email;

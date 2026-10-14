@@ -11,11 +11,9 @@ import { ROUTES } from "@/lib/routes";
  * identity, then an avatar with a small menu.
  *
  * The signed-out state opens a dropdown anchored under the button — matching
- * the signed-in menu below it — rather than a full-screen modal. Nothing in
- * this app is ever gated behind an account, so this is a low-key "here's an
- * option" rather than something that needs to grab the whole screen's
- * attention. (`SavePrompt` still uses the centered `SignInDialog` for the one
- * place sign-in is an active nudge after a finished report.)
+ * the signed-in menu below it — rather than a full-screen modal: the marketing
+ * pages it sits on need no account, so this is a low-key "here's an option"
+ * rather than something that needs to grab the whole screen's attention.
  *
  * `onCard` mirrors NavBar's own variant — on the home page the nav starts
  * inside the dark hero card and everything in it has to switch to light text.

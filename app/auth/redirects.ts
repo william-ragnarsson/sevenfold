@@ -22,11 +22,14 @@ export function redirectTo(request: NextRequest, path: string, params: Record<st
 
 /**
  * An email link Supabase refused: expired, already used, or a later one sent
- * since. Back to the form that sends a fresh one.
+ * since. Back to the form that sends a fresh one, on `/sign-in` — the
+ * password page is in the dashboard, which needs a session this link failed
+ * to give. Logging in there instead still ends on the password page.
  */
 export function deadLink(request: NextRequest, flow: EmailFlow) {
   return flow === "recovery"
-    ? redirectTo(request, ROUTES.password, {
+    ? redirectTo(request, ROUTES.signIn, {
+        next: ROUTES.password,
         auth_email: "forgot",
         auth_error: "That reset link has expired or was already used. Request a new one.",
       })
@@ -45,7 +48,8 @@ export function deadLink(request: NextRequest, flow: EmailFlow) {
  */
 export function codeUnusable(request: NextRequest, flow: EmailFlow) {
   return flow === "recovery"
-    ? redirectTo(request, ROUTES.password, {
+    ? redirectTo(request, ROUTES.signIn, {
+        next: ROUTES.password,
         auth_email: "forgot",
         auth_error:
           "That reset link has expired or was opened in a different browser. Request a new one.",

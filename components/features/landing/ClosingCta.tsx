@@ -17,9 +17,9 @@ import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
  * down here reads as a broken copy of the hero, which is what it replaced.
  */
 
-/** All three are properties of the code, not promises: there is no auth, the
- *  API route holds the PDF in memory only, and history is a localStorage key. */
-const ASSURANCES = ["No account", "Nothing stored", "One PDF, that's it"];
+/** All three are properties of the code, not promises: there's no billing,
+ *  the settings page exports and deletes everything, and a run takes one PDF. */
+const ASSURANCES = ["Free account", "Export or delete any time", "One PDF, that's it"];
 
 function Check() {
   return (

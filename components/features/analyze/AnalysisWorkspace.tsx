@@ -3,7 +3,6 @@
 import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
 import RecentAnalyses from "@/components/features/analyze/RecentAnalyses";
 import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
-import SavePrompt from "@/components/features/auth/SavePrompt";
 import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
 
 /**
@@ -15,7 +14,7 @@ import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
  * on the site offers the same way out for someone who turns up without a PDF.
  */
 export default function AnalysisWorkspace() {
-  const { status, history, refreshHistory } = useAnalysis();
+  const { status, refreshHistory } = useAnalysis();
 
   return (
     <div className="space-y-8">
@@ -31,9 +30,6 @@ export default function AnalysisWorkspace() {
       </section>
 
       <LegacyImportPrompt onImported={() => void refreshHistory()} />
-
-      {/* Only worth asking once they have something to lose. */}
-      {history.length > 0 && <SavePrompt />}
 
       <RecentAnalyses />
     </div>

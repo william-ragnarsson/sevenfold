@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/components/features/auth/AuthProvider";
 import { useLiveRun } from "@/components/features/analyze/useLiveRun";
 import { ROUTES } from "@/lib/routes";
 import Sidebar from "./Sidebar";
@@ -15,9 +16,22 @@ import Sidebar from "./Sidebar";
  * sidebar stays put and there is one scrollbar. A page that needs a scroll box
  * of its own (the report, for its chapter scroll-spy) fills `main` with an
  * `h-full overflow-y-auto` box, and then `main` itself never overflows.
+ *
+ * `proxy.ts` only lets signed-in accounts in, so the pages inside can take
+ * one for granted. A sign-out while you're here (the settings page's button,
+ * deleting the account, another tab) leaves for the home page — the one
+ * destination all three agree on, so they can't race to different places.
  */
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { configured, loading, isIdentified } = useAuth();
+  const signedOut = configured && !loading && !isIdentified;
+
+  useEffect(() => {
+    if (signedOut) router.replace(ROUTES.home);
+  }, [signedOut, router]);
+
   // The page the drawer was opened on rather than a plain flag: moving to
   // another page closes it, with no effect needed to reset it.
   const [openOn, setOpenOn] = useState<string | null>(null);

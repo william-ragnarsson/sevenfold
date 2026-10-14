@@ -14,6 +14,11 @@ export const ROUTES = {
   password: "/app/settings/password",
 } as const;
 
+/** Whether `pathname` is in the dashboard, which needs an account (see `proxy.ts`). */
+export function isAppPath(pathname: string): boolean {
+  return pathname === "/app" || pathname.startsWith("/app/");
+}
+
 /** A deck's report. `id` is the deck's SHA-256 (see `lib/analyses/hash.ts`). */
 export function analysisPath(id: string): string {
   return `${ROUTES.decks}/${id}`;

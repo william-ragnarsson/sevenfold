@@ -138,8 +138,10 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       // the run down with it — and now that the loading state is already on
       // screen, an unhandled rejection here would strand it there forever.
       try {
-        // Nothing is gated, but persistence needs *a* user — so one is minted
-        // here, at the first real action, rather than on every page load.
+        // Persistence needs *a* user. Runs start from the dashboard, which
+        // proxy.ts keeps to signed-in accounts, so there's normally one
+        // already; minting an anonymous one here is the fallback for anything
+        // that starts a run without one.
         await ensureAnonymous();
 
         // Already analyzed this exact deck — hand the page over to the saved
