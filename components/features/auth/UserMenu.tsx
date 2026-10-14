@@ -129,7 +129,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
       {panelOpen && (
         <div
           role="menu"
-          className="pop-in absolute right-0 top-full z-50 mt-4 w-56 origin-top-right overflow-hidden rounded-2xl border border-ink/12 bg-paper shadow-[0_1px_2px_rgba(20,19,15,0.05),0_16px_40px_-16px_rgba(20,19,15,0.4)]"
+          className="pop-in absolute right-0 top-full z-50 mt-4 w-56 origin-top-right overflow-hidden rounded-2xl border border-ink/12 bg-paper shadow-[0_1px_2px_rgba(20,25,35,0.05),0_16px_40px_-16px_rgba(20,25,35,0.4)]"
         >
           <div className="border-b border-ink/8 px-4 py-3">
             <p className="truncate text-sm font-medium text-ink">{name || "Signed in"}</p>

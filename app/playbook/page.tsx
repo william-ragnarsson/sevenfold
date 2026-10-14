@@ -2,16 +2,20 @@ import fs from "fs";
 import path from "path";
 import Link from "next/link";
 
-type Block = { type: "h2" | "h3" | "p" | "li" | "quote"; text: string };
+// `n` is the section number, set on h2s only. It's counted here rather than
+// while rendering, where mutating a counter breaks React's purity rules.
+type Block = { type: "h2" | "h3" | "p" | "li" | "quote"; text: string; n?: number };
 
 function parse(md: string): Block[] {
   const blocks: Block[] = [];
+  let sectionNo = 0;
   for (const raw of md.split("\n")) {
     const line = raw.trim();
     if (!line || line === "---" || line.startsWith("# ")) continue;
     if (line.startsWith("> ")) blocks.push({ type: "quote", text: line.slice(2) });
     else if (line.startsWith("### ")) blocks.push({ type: "h3", text: line.slice(4) });
-    else if (line.startsWith("## ")) blocks.push({ type: "h2", text: line.slice(3).replace(/^\d+\.\s*/, "") });
+    else if (line.startsWith("## "))
+      blocks.push({ type: "h2", text: line.slice(3).replace(/^\d+\.\s*/, ""), n: ++sectionNo });
     else if (line.startsWith("- ")) blocks.push({ type: "li", text: line.slice(2) });
     else blocks.push({ type: "p", text: line });
   }
@@ -23,7 +27,7 @@ function inline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
   return parts.map((p, i) => {
     if (p.startsWith("**")) return <strong key={i} className="font-semibold text-ink">{p.slice(2, -2)}</strong>;
-    if (p.startsWith("*")) return <em key={i} className="font-serif italic text-ink">{p.slice(1, -1)}</em>;
+    if (p.startsWith("*")) return <em key={i} className="italic text-ink">{p.slice(1, -1)}</em>;
     return <span key={i}>{p}</span>;
   });
 }
@@ -31,7 +35,6 @@ function inline(text: string) {
 export default function PlaybookPage() {
   const md = fs.readFileSync(path.join(process.cwd(), "docs/playbook.md"), "utf8");
   const blocks = parse(md);
-  let sectionNo = 0;
 
   return (
     <div className="mx-auto max-w-3xl space-y-10 px-6">
@@ -41,7 +44,7 @@ export default function PlaybookPage() {
           Context database
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold tracking-[-0.03em] leading-[1] text-ink">
-          How I evaluated <span className="marker">800+ decks</span>
+          How I evaluated 800+ decks
         </h1>
         <p className="text-lg text-muted max-w-xl leading-relaxed">
           The exact criteria the AI uses, drawn from a year of weekly deal reviews,
@@ -57,16 +60,13 @@ export default function PlaybookPage() {
                 {b.text}
               </p>
             );
-          if (b.type === "h2") {
-            sectionNo += 1;
-            const n = sectionNo;
+          if (b.type === "h2")
             return (
               <h2 key={i} className="flex items-center gap-3 pt-10 text-2xl font-bold tracking-tight text-ink">
-                <span className="grid place-items-center w-8 h-8 rounded-xl bg-ink text-paper text-sm font-bold shrink-0">{n}</span>
+                <span className="grid place-items-center w-8 h-8 rounded-xl bg-ink text-paper text-sm font-bold shrink-0">{b.n}</span>
                 {b.text}
               </h2>
             );
-          }
           if (b.type === "h3")
             return <h3 key={i} className="pt-5 text-base font-semibold text-accent">{inline(b.text)}</h3>;
           if (b.type === "li")

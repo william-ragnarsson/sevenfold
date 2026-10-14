@@ -83,7 +83,7 @@ export default function DealLog() {
   const cellKey = (i: number, name: string) => (i === flash.row ? `${name}-${flash.tick}` : name);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-[0_40px_80px_-40px_rgba(20,19,15,0.45)]">
+    <div className="overflow-hidden rounded-2xl border border-ink/12 bg-white shadow-[0_40px_80px_-40px_rgba(20,25,35,0.45)]">
       {/* Nameless: three dots and nothing else. */}
       <div className="flex items-center gap-2 border-b border-ink/10 bg-paper-2/60 px-4 py-2.5">
         <span className="h-2.5 w-2.5 rounded-full bg-ink/15" />

@@ -10,9 +10,8 @@ type CurrentAnalysisCardProps = {
 
 const TONES = {
   light: {
-    // Opaque, like the elevated dropzone: a translucent panel lets the page's
-    // dot grid show through and reads as unfinished.
-    card: "border-ink/10 bg-[#fbf9f3] shadow-[0_1px_2px_rgba(20,19,15,0.04),0_24px_48px_-28px_rgba(20,19,15,0.35)] hover:border-ink/20",
+    // Opaque white, like the elevated dropzone, so it lifts off the grey paper.
+    card: "border-ink/10 bg-white shadow-[0_1px_2px_rgba(20,25,35,0.04),0_24px_48px_-28px_rgba(20,25,35,0.35)] hover:border-ink/20",
     name: "text-ink",
     label: "text-ink/80",
     count: "text-muted",
@@ -62,8 +61,8 @@ export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisC
     <div className={`group relative rounded-2xl border text-left transition-colors ${t.card}`}>
       <div className="flex items-center gap-3 px-4 pb-4 pt-5 sm:gap-4 sm:px-5">
         <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-bright opacity-60" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-bright" />
+          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${t.fill} opacity-60`} />
+          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${t.fill}`} />
         </span>
         <div className="min-w-0 flex-1">
           <p className={`truncate font-semibold tracking-tight ${t.name}`}>{name}</p>

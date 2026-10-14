@@ -90,7 +90,7 @@ function SetPasswordCard({ user }: { user: User }) {
         </p>
         <Link
           href="/due-diligence"
-          className="mt-6 flex h-11 w-full items-center justify-center rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf9f3]"
+          className="mt-6 flex h-11 w-full items-center justify-center rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           Go to my analyses
         </Link>
