@@ -68,8 +68,9 @@ interface AuthContextValue {
    */
   dataVersion: number;
   /**
-   * The current user, creating an anonymous one if needed. Called at the moment
-   * someone starts an analysis, never on page load — anonymous users are real
+   * The current user, creating an anonymous one if needed. Analyses don't call
+   * this any more, since a run needs a real account; only the legacy-history
+   * import does, and never on page load — anonymous users are real
    * `auth.users` rows and we don't want one per crawler visit.
    */
   ensureAnonymous: () => Promise<User | null>;
@@ -188,8 +189,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error: signInError } = await supabase.auth.signInAnonymously();
       if (signInError) {
-        // Anonymous sign-ins disabled, or rate-limited. The analysis still runs;
-        // it just won't be saved.
+        // Anonymous sign-ins disabled, or rate-limited. The caller carries on
+        // without a user.
         console.warn("[auth] anonymous sign-in failed:", signInError.message);
         return null;
       }

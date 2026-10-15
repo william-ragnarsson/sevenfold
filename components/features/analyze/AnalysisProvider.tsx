@@ -60,7 +60,7 @@ export function useAnalysis(): AnalysisContextValue {
 }
 
 export default function AnalysisProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading, dataVersion, ensureAnonymous } = useAuth();
+  const { user, loading: authLoading, dataVersion } = useAuth();
   const [file, setFileState] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -119,10 +119,10 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
   const run = useCallback(
     async ({ id, body, force }: { id: string; body: FormData; force?: boolean }) => {
       // Claim the run and navigate *first*. Everything below needs the network
-      // — minting an anonymous user costs a getUser plus a signInAnonymously,
-      // and the dedupe check is a third round-trip — and doing that before any
-      // state changed left the button sitting there looking dead for the whole
-      // handshake. Both outcomes land on this same URL anyway.
+      // — the dedupe check is a round-trip before the run's own request — and
+      // doing that before any state changed left the button sitting there
+      // looking dead for the whole handshake. Both outcomes land on this same
+      // URL anyway.
       //
       // It has to be the full claim, not just the push: the report page
       // decides it is showing a live run from `currentId`, so navigating
@@ -134,16 +134,14 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       dispatch({ type: "reset" });
       router.push(analysisPath(id));
 
-      // Both of these are conveniences, not gates, so neither is allowed to take
-      // the run down with it — and now that the loading state is already on
-      // screen, an unhandled rejection here would strand it there forever.
+      // No account check here: the route refuses runs without one, and that
+      // error lands in the catch below like any other. Runs start from the
+      // dashboard, which proxy.ts already keeps to signed-in accounts.
+      //
+      // The dedupe check is a convenience, not a gate, so it isn't allowed to
+      // take the run down with it — and now that the loading state is already
+      // on screen, an unhandled rejection here would strand it there forever.
       try {
-        // Persistence needs *a* user. Runs start from the dashboard, which
-        // proxy.ts keeps to signed-in accounts, so there's normally one
-        // already; minting an anonymous one here is the fallback for anything
-        // that starts a run without one.
-        await ensureAnonymous();
-
         // Already analyzed this exact deck — hand the page over to the saved
         // copy rather than spending another few minutes on the same answer.
         if (!force) {
@@ -185,7 +183,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
         await refreshHistory();
       }
     },
-    [router, ensureAnonymous, refreshHistory],
+    [router, refreshHistory],
   );
 
   const start = useCallback(
