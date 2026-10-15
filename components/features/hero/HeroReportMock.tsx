@@ -48,9 +48,6 @@ function Stars({ value }: { value: number }) {
 export default function HeroReportMock() {
   return (
     <div aria-hidden className="relative hidden lg:block">
-      {/* Glow behind the panel, so it reads as lifted off the dark card. */}
-      <div className="pointer-events-none absolute inset-8 rounded-full bg-accent-bright/20 blur-3xl" />
-
       <div className="hero-float relative">
         <div className="w-[600px] translate-x-10 rotate-[-3deg] overflow-hidden rounded-2xl border border-white/15 bg-paper shadow-[0_40px_70px_-20px_rgba(0,0,0,0.55)] xl:w-[680px]">
           <div className="flex items-center gap-2 border-b border-ink/10 bg-paper-2/60 px-4 py-2.5">

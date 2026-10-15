@@ -1,15 +1,22 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Associate's palette (vc-fund-manager/src/styles/base.css), mapped onto the
+   names the components already use: cool grey paper, navy-black ink, a muted
+   slate-navy accent. `accent-bright` is the accent for dark surfaces, and
+   `marker` the pale tint behind a cell that just filled in. `on-ink` and
+   `on-ink-muted` are text on the dark sidebar: links and labels. */
 :root {
-  --paper: #f6f4ee;
-  --paper-2: #efece2;
-  --ink: #14130f;
-  --ink-2: #22201a;
-  --muted: #54514a;
-  --accent: #1a6b3f;
-  --accent-bright: #34d17a;
-  --marker: #d6f56b;
+  --paper: #f6f7f9;
+  --paper-2: #f1f3f5;
+  --ink: #1c2638;
+  --ink-2: #1f2c40;
+  --muted: #5a6170;
+  --accent: #3b5478;
+  --accent-bright: #9aaecb;
+  --marker: #dde5f0;
+  --on-ink: #b9c3d3;
+  --on-ink-muted: #93a0b5;
 }
 
 @theme inline {
@@ -21,8 +28,9 @@
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
   --color-marker: var(--marker);
-  --font-sans: var(--font-geist-sans);
-  --font-serif: var(--font-instrument-serif);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --font-sans: var(--font-archivo);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -31,17 +39,8 @@ html, body {
   color: var(--ink);
 }
 
-/* Highlighter marker reveal */
-@keyframes marker-in {
-  from { background-size: 0% 100%; }
-  to { background-size: 100% 100%; }
-}
-.marker {
-  background-image: linear-gradient(transparent 58%, var(--marker) 58%, var(--marker) 92%, transparent 92%);
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  animation: marker-in 0.9s 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
-  padding: 0 0.1em;
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 /* Fade-up entrance */
@@ -63,6 +62,13 @@ html, body {
   to { opacity: 1; }
 }
 .fade-in { animation: fade-in 0.18s ease-out both; }
+
+/* The dashboard's mobile drawer sliding in from the left */
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-in { animation: drawer-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 /* Shorter fade-up for live log entries streaming in */
 @keyframes fade-in-soft {
@@ -110,18 +116,6 @@ html, body {
 }
 .hero-float { animation: hero-float 7s ease-in-out infinite; }
 
-/* Closing CTA: a slow accent bloom behind the dropzone, so the one thing on the
-   page you're meant to click has some light on it. It only works because that
-   dropzone is `elevated`, i.e. opaque: behind the default translucent surface
-   the colour comes through the panel and stains it grey-green instead of
-   haloing it. Its own layer rather than a box-shadow, because the dropzone's
-   dashed border is an SVG overlay that would clip a shadow. */
-@keyframes cta-glow {
-  0%, 100% { opacity: 0.5; transform: scale(0.97); }
-  50% { opacity: 1; transform: scale(1.03); }
-}
-.cta-glow { animation: cta-glow 6s ease-in-out infinite; }
-
 /* Current-analysis card: the active step's progress segment breathes, so the
    bar reads as live rather than stalled between step changes. */
 @keyframes step-active {
@@ -130,44 +124,17 @@ html, body {
 }
 .step-active { animation: step-active 1.6s ease-in-out infinite; }
 
-/* Page backdrop: fine dot grid on the paper, the light-side counterpart to
-   .hero-grid. Sits in a fixed layer behind every page. */
-/* A hexagonal (triangular) dot lattice rather than a square one: two identical
-   layers, the second offset by half a tile on both axes. The rows stagger, so
-   the implied lines run at 60° instead of 90° and it reads softer than graph
-   paper. Tile height is the 22px spacing × √3, which is what makes the
-   neighbour distances equal in every direction. */
-.dot-grid {
-  background-image:
-    radial-gradient(rgba(20, 19, 15, 0.085) 1px, transparent 1px),
-    radial-gradient(rgba(20, 19, 15, 0.085) 1px, transparent 1px);
-  background-size: 22px 38.1px;
-  background-position: 0 0, 11px 19.05px;
-}
-
-/* Hero: faint grid inside the dark card, faded out toward the edges. */
-.hero-grid {
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 70% at 30% 20%, #000 0%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 30% 20%, #000 0%, transparent 100%);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .marker,
   .fade-up,
   .pop-in,
   .fade-in,
+  .drawer-in,
   .word-in,
   .hero-float,
-  .cta-glow,
   .step-active,
   .cell-pop,
   .animate-blink,
   .dash-active .dash-rect {
     animation: none !important;
   }
-  .marker { background-size: 100% 100%; }
 }

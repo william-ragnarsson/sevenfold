@@ -17,9 +17,9 @@ import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
  * down here reads as a broken copy of the hero, which is what it replaced.
  */
 
-/** All three are properties of the code, not promises: there is no auth, the
- *  API route holds the PDF in memory only, and history is a localStorage key. */
-const ASSURANCES = ["No account", "Nothing stored", "One PDF, that's it"];
+/** All three are properties of the code, not promises: there's no billing,
+ *  the settings page exports and deletes everything, and a run takes one PDF. */
+const ASSURANCES = ["Free account", "Export or delete any time", "One PDF, that's it"];
 
 function Check() {
   return (
@@ -40,25 +40,13 @@ export default function ClosingCta() {
   return (
     <section className="fade-up flex flex-col items-center text-center">
       <h2 className="max-w-3xl text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
-        See it <span className="font-serif font-normal italic">in action!</span>
+        See it in action!
       </h2>
 
-      {/* Two devices, and they depend on each other. `elevated` makes the
-          dropzone opaque and lifts it off the band, which is what the rest of
-          the page uses to mean "this is the object". The bloom then reads as a
-          halo around that panel. Behind the default translucent surface it read
-          as a stain instead, which is why the earlier attempt at a glow alone
-          made this worse rather than better. */}
-      <div className="relative mt-10 w-full max-w-xl">
-        <div
-          aria-hidden="true"
-          className="cta-glow pointer-events-none absolute inset-0 rounded-full bg-accent/30 blur-3xl"
-        />
-        {/* `relative` lifts the controls above the bloom without a z-index,
-            which would leak out of this stacking context. */}
-        <div className="relative">
-          <AnalysisLauncher tone="light" align="center" elevated />
-        </div>
+      {/* `elevated` makes the dropzone opaque and lifts it off the band, which
+          is what the rest of the page uses to mean "this is the object". */}
+      <div className="mt-10 w-full max-w-xl">
+        <AnalysisLauncher tone="light" align="center" elevated />
       </div>
 
       <ul className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">

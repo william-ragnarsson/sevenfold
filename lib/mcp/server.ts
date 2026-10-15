@@ -28,6 +28,7 @@ import { isStalled, runStartedAt, STALLED_MESSAGE } from "@/lib/analyses/status"
 import { initialState, streamReducer, type AnalysisState } from "@/lib/diligence/stream-state";
 import { MIN_DECK_CHARS } from "@/lib/pdf/extract";
 import { OCR_INSTRUCTION } from "@/lib/pdf/extractors/instruction";
+import { analysisPath } from "@/lib/routes";
 import { createSupabaseClientForToken } from "@/lib/supabase/token";
 import type { AnalysisStatus } from "@/lib/supabase/types";
 
@@ -413,7 +414,7 @@ function originOf(ctx: ServerContext): string {
 }
 
 function reportUrl(origin: string, hash: string): string {
-  return `${origin}/due-diligence/${hash}`;
+  return `${origin}${analysisPath(hash)}`;
 }
 
 function textResult(text: string): CallToolResult {

@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
-import LayoutShell from "@/components/layout/LayoutShell";
+import { Archivo, Geist_Mono } from "next/font/google";
 import AnalysisProvider from "@/components/features/analyze/AnalysisProvider";
 import AuthProvider from "@/components/features/auth/AuthProvider";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const instrumentSerif = Instrument_Serif({
-  variable: "--font-instrument-serif",
-  weight: "400",
+// Archivo is Associate's typeface. Italic is loaded too, for the few places
+// that use it (playbook emphasis, form placeholders), so they aren't faked.
+const archivo = Archivo({
+  variable: "--font-archivo",
   style: ["normal", "italic"],
   subsets: ["latin"],
 });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://vcanalyst.williamragnarsson.dev";
 const title = "SevenFold - AI VC analyst, 800+ decks distilled";
@@ -42,18 +41,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} antialiased`}
+      className={`${archivo.variable} ${geistMono.variable} antialiased`}
     >
       <body className="relative min-h-screen overflow-x-hidden">
         {/* Auth wraps analysis: starting a run needs a user, so AnalysisProvider
             consumes useAuth(). This layout stays a static server component —
             the session is read client-side, which keeps the landing page
-            statically rendered. Nothing here is gated, so there's no need to
-            know who the user is before the first paint. */}
+            statically rendered. The one gate, on /app, is in proxy.ts, so
+            nothing here needs to know who the user is before the first paint.
+            The chrome around the page comes from the route groups:
+            (marketing) has the floating nav and footer, (app) the dashboard's
+            sidebar. Both sit inside these providers, so a run keeps going
+            across the two. */}
         <AuthProvider>
-          <AnalysisProvider>
-            <LayoutShell>{children}</LayoutShell>
-          </AnalysisProvider>
+          <AnalysisProvider>{children}</AnalysisProvider>
         </AuthProvider>
       </body>
     </html>

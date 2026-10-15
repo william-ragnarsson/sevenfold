@@ -2,7 +2,7 @@
  * The deck fingerprint: a hex SHA-256 of the PDF bytes.
  *
  * It is both the dedupe key (re-uploading the same deck reopens its report
- * instead of burning another run) and the `/due-diligence/[id]` URL segment.
+ * instead of burning another run) and the `/app/decks/[id]` URL segment.
  * Computed identically on the client (before upload) and on the server (before
  * persisting), so both agree on the id without passing it around. WebCrypto is
  * global in Node 20+, so one implementation covers both.

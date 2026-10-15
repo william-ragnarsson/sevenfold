@@ -24,14 +24,13 @@ export default function PitchPerspective() {
       <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20">
         <div>
           <h2 className="text-3xl font-bold leading-[1.1] tracking-tight text-ink sm:text-4xl">
-            Improve your funding odds{" "}
-            <span className="font-serif font-normal italic">in 30 seconds.</span>
+            Improve your funding odds in 30 seconds.
           </h2>
 
           <p className="mt-6 text-lg leading-relaxed text-muted">
             VC firms run an investment system to evaluate hundreds of startups every week. Prepare
             your pitch against that same system, drawn from{" "}
-            <span className="marker">my context database of real deal reviews</span>.
+            <span className="font-medium text-ink">my context database of real deal reviews</span>.
           </p>
 
           {/* `divide-y` puts rules only *between* items. A border above the

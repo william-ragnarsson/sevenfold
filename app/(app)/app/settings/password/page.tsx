@@ -15,25 +15,27 @@ import {
 } from "@/components/features/auth/AuthFormParts";
 import { NEEDS_FRESH_LOGIN } from "@/components/features/auth/authErrors";
 import { hasPassword } from "@/components/features/auth/providers";
-import SignInCard from "@/components/features/auth/SignInCard";
+import { ROUTES } from "@/lib/routes";
 
 /**
- * Where a password is set or changed: from the account page, or straight
- * from a reset link, which signs the user in on its way here. Signed out —
- * a reset link that failed, or an old bookmark — it offers to send a new one.
+ * Where a password is set or changed: from the settings page, or straight
+ * from a reset link, which signs the user in on its way here. A reset link
+ * that failed never gets this far: it lands on `/sign-in`, on the form that
+ * sends a new one (see `app/auth/redirects.ts`).
  */
 export default function PasswordPage() {
   const { user, isIdentified, loading, configured } = useAuth();
 
   if (!configured) return null;
 
-  if (loading) {
+  // Signed out mid-visit, AppShell is already on its way to the home page.
+  if (loading || !isIdentified || !user) {
     return <div className="mx-auto max-w-3xl px-6 pt-10 text-muted">Loading…</div>;
   }
 
   return (
     <div className="mx-auto max-w-sm px-4 pt-10 pb-20">
-      {isIdentified && user ? <SetPasswordCard user={user} /> : <SignInCard emailMode="forgot" />}
+      <SetPasswordCard user={user} />
     </div>
   );
 }
@@ -89,13 +91,13 @@ function SetPasswordCard({ user }: { user: User }) {
           new password.
         </p>
         <Link
-          href="/due-diligence"
-          className="mt-6 flex h-11 w-full items-center justify-center rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf9f3]"
+          href={ROUTES.decks}
+          className="mt-6 flex h-11 w-full items-center justify-center rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
         >
           Go to my analyses
         </Link>
         <p className="mt-4 text-center text-sm">
-          <Link href="/account" className={TEXT_BUTTON}>
+          <Link href={ROUTES.settings} className={TEXT_BUTTON}>
             Back to account
           </Link>
         </p>
@@ -151,7 +153,7 @@ function SetPasswordCard({ user }: { user: User }) {
       )}
 
       <p className="mt-4 text-center text-sm">
-        <Link href="/account" className={TEXT_BUTTON}>
+        <Link href={ROUTES.settings} className={TEXT_BUTTON}>
           Back to account
         </Link>
       </p>

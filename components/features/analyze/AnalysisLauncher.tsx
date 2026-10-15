@@ -1,9 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import Dropzone from "@/components/ui/Dropzone";
 import CurrentAnalysisCard from "@/components/features/analyze/CurrentAnalysisCard";
 import SampleDeckPrompt from "@/components/features/analyze/SampleDeckPrompt";
 import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
+import { useAuth } from "@/components/features/auth/AuthProvider";
+import { ROUTES, signInPath } from "@/lib/routes";
 
 type AnalysisLauncherProps = {
   /** `dark` restyles the controls for the hero card's dark surface. */
@@ -19,9 +22,17 @@ type AnalysisLauncherProps = {
 const TONES = {
   light: {
     run: "bg-ink text-paper hover:bg-accent disabled:hover:bg-ink",
+    panel: "border border-ink/10 bg-white/55 backdrop-blur",
+    panelElevated: "bg-white shadow-[0_40px_80px_-40px_rgba(20,25,35,0.45)]",
+    title: "text-ink",
+    hint: "text-muted",
   },
   dark: {
     run: "bg-accent-bright text-ink hover:bg-white disabled:hover:bg-accent-bright",
+    panel: "border border-white/10 bg-white/[0.04]",
+    panelElevated: "border border-white/10 bg-white/[0.04]",
+    title: "text-white",
+    hint: "text-white/60",
   },
 } as const;
 
@@ -33,11 +44,11 @@ const TONES = {
  * The sample sticker is part of this component rather than an opt-in prop: every
  * dropzone on the site is a place where someone can discover they have no PDF to
  * hand, so every dropzone needs the same way out. It was a `sample` flag at
- * first, and it immediately drifted — /due-diligence had it and the closing CTA
+ * first, and it immediately drifted — /due-diligence (now /app/decks) had it and the closing CTA
  * on the home page didn't, for no reason anyone chose.
  *
  * Rendered in the hero card (dark, compact), the home page's closing CTA (light,
- * elevated) and on /due-diligence (light); it reads everything it needs from the
+ * elevated) and on /app/decks (light); it reads everything it needs from the
  * analysis context, so the call sites stay in sync without prop drilling.
  */
 export default function AnalysisLauncher({
@@ -47,6 +58,7 @@ export default function AnalysisLauncher({
   elevated = false,
 }: AnalysisLauncherProps) {
   const { file, setFile, status, start } = useAnalysis();
+  const { configured, loading, isIdentified } = useAuth();
   const t = TONES[tone];
   // Block layout, not flex: the dropzone must stay full-width, and flex children
   // shrink to content under `items-start`. Only the button needs centring.
@@ -54,6 +66,31 @@ export default function AnalysisLauncher({
 
   // The card carries its own abort control.
   if (status === "loading") return <CurrentAnalysisCard tone={tone} />;
+
+  // Runs happen in the dashboard, which needs an account (proxy.ts), so a
+  // signed-out visitor on the home page is sent to make one first rather than
+  // dropping a deck they can't run. Only once the session has resolved: the
+  // dashboard's own launcher is always signed in, and must never flash this.
+  if (configured && !loading && !isIdentified) {
+    return (
+      <div
+        className={`rounded-3xl text-center ${elevated ? t.panelElevated : t.panel} ${
+          compact ? "px-6 py-7 sm:py-8" : "px-8 py-14"
+        }`}
+      >
+        <p className={`text-lg font-semibold ${t.title}`}>Analyse a pitch deck</p>
+        <p className={`mx-auto mt-1.5 max-w-sm text-sm ${t.hint}`}>
+          Make an account to run one. Every report is kept in it.
+        </p>
+        <Link
+          href={signInPath(ROUTES.decks)}
+          className={`mt-5 inline-block rounded-full px-8 py-3.5 font-semibold transition-colors ${t.run}`}
+        >
+          Get started →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

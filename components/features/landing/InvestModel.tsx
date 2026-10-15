@@ -32,8 +32,7 @@ export default function InvestModel() {
 
         <div>
           <h2 className="text-3xl font-bold leading-[1.1] tracking-tight text-ink sm:text-4xl">
-            Trained on{" "}
-            <span className="font-serif font-normal italic">proprietary data.</span>
+            Trained on proprietary data.
           </h2>
 
           <p className="mt-6 text-lg leading-relaxed text-muted">

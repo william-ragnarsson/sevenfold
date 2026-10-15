@@ -11,10 +11,11 @@
  * is watching a stream, so the state is also flushed every few seconds while
  * the run is in flight: that is what `get_analysis` and the report page poll.
  *
- * Persistence is strictly best-effort. An analysis costs real money and takes
- * minutes; nothing in this file is allowed to fail one. Every operation is
- * wrapped, and a caller with no Supabase project — or no session — gets a
- * no-op recorder that simply does nothing.
+ * Who may run one is settled before any of this, by `requireAccount`: a run
+ * costs real money, so it needs a signed-in account. Once it's running,
+ * persistence is strictly best-effort. An analysis takes minutes; nothing else
+ * in this file is allowed to fail one. Every operation is wrapped, and with no
+ * Supabase project a run gets a no-op recorder that simply does nothing.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -25,7 +26,11 @@ import { hashBytes } from "@/lib/analyses/hash";
 import { initialState, streamReducer, type AnalysisState } from "@/lib/diligence/stream-state";
 import type { ProgressEvent } from "@/lib/diligence/types";
 
-/** Runs allowed per user per rolling 24h — anonymous users get the tighter cap. */
+/**
+ * Runs allowed per user per rolling 24h. Only the MCP route under `next dev`
+ * still lets an anonymous session run (see `lib/supabase/token.ts`); it gets
+ * the tighter cap.
+ */
 const DAILY_LIMIT_ANONYMOUS = 5;
 const DAILY_LIMIT_IDENTIFIED = 25;
 
@@ -67,38 +72,40 @@ const NOOP_RECORDER: AnalysisRecorder = {
 };
 
 export class RateLimitError extends Error {}
+export class SignInRequiredError extends Error {}
+
+/**
+ * The account an `/api/analyze` request runs for, from its session cookies.
+ *
+ * The route asks before it reads the deck: without an account a run would
+ * spend real money with nothing to save it to and no rate limit. Throws
+ * `SignInRequiredError` for a signed-out caller and for an anonymous session
+ * alike, since anonymous runs went with the free trial. Returns null only when
+ * Supabase isn't configured: there are no accounts to require then, so the run
+ * goes ahead unsaved, as local dev without a project always has.
+ */
+export async function requireAccount(): Promise<AnalysisOwner | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user || data.user.is_anonymous) {
+    throw new SignInRequiredError("Sign in to run an analysis.");
+  }
+  return { supabase, userId: data.user.id, isAnonymous: false };
+}
 
 /**
  * Claims a row for this run and returns something to feed events into.
  *
  * Called before the pipeline starts so the row exists — and the deck is
- * uploaded — even if the run is later abandoned. Throws only `RateLimitError`;
- * every other problem degrades to `NOOP_RECORDER`.
+ * uploaded — even if the run is later abandoned. The analyze route gets
+ * `owner` from `requireAccount`, and passes null when there's no Supabase
+ * project; the MCP route gets it from a verified bearer token. Throws only
+ * `RateLimitError`; every other problem degrades to `NOOP_RECORDER`.
  */
-export async function startRecording(deck: Buffer, filename: string): Promise<AnalysisRecorder> {
-  if (!isSupabaseConfigured()) return NOOP_RECORDER;
-
-  let owner: AnalysisOwner;
-
-  try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return NOOP_RECORDER; // signed out — run it, don't save it
-    owner = { supabase, userId: data.user.id, isAnonymous: data.user.is_anonymous === true };
-  } catch (err) {
-    console.warn("[analyses] no session, skipping persistence:", err);
-    return NOOP_RECORDER;
-  }
-
-  return recordFor(owner, { pdf: deck, filename });
-}
-
-/**
- * `startRecording` for a caller that has already resolved the user — the MCP
- * route, which authenticates with a bearer token rather than cookies. Same
- * contract: throws only `RateLimitError`, otherwise degrades to a no-op.
- */
-export async function recordFor(owner: AnalysisOwner, deck: DeckToRecord): Promise<AnalysisRecorder> {
+export async function recordFor(owner: AnalysisOwner | null, deck: DeckToRecord): Promise<AnalysisRecorder> {
+  if (!owner) return NOOP_RECORDER;
   const { supabase, userId, isAnonymous } = owner;
 
   await enforceRateLimit(supabase, userId, isAnonymous);
@@ -260,8 +267,8 @@ class SupabaseRecorder implements AnalysisRecorder {
 
 /**
  * A cheap abuse guard. `/api/analyze` spends Anthropic and Gemini tokens for up
- * to five minutes per call, and anonymous sign-in makes it trivial to get a
- * session, so the endpoint needs *some* ceiling. One indexed count, no extra
+ * to five minutes per call, and an account costs nothing but an email address,
+ * so the endpoint needs *some* ceiling. One indexed count, no extra
  * infrastructure.
  */
 async function enforceRateLimit(
