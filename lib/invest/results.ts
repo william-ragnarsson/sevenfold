@@ -26,8 +26,6 @@ export const HELD_OUT = {
   priorBrier: card.evaluation.baselines.prior_brier,
   /** Ranking test for "add up the six star ratings". */
   starSumRocAuc: card.evaluation.baselines.criteria_sum_roc_auc,
-  /** Accuracy of answering "pass" to every deck. */
-  alwaysPassAccuracy: card.evaluation.baselines.always_pass.accuracy,
   repeats: 10,
   folds: 5,
 };

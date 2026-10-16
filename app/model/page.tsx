@@ -6,7 +6,6 @@ import Figure from "@/components/features/model/Figure";
 import FundingStep from "@/components/features/model/FundingStep";
 import FutureTest from "@/components/features/model/FutureTest";
 import LearningCurve from "@/components/features/model/LearningCurve";
-import RankingBars from "@/components/features/model/RankingBars";
 import TrainingReplay from "@/components/features/model/TrainingReplay";
 import {
   AGREE_PER_100,
@@ -30,9 +29,10 @@ export const metadata: Metadata = {
 
 /**
  * The public explainer for the invest model, written for founders rather than
- * data scientists: results first (how often it agrees with me, and against
- * what), then what moves the score, then how it learned. Each chart carries one
- * plain sentence; the proper names live in "For the curious" at the bottom.
+ * data scientists: results first (how often it agrees with me), then what
+ * moves the score, then how it learned, closing with a note that all of it is
+ * simplified. Each chart carries one plain sentence; the proper names live in
+ * "For the curious" at the bottom.
  * The figures alternate sides (`layout`) so the page doesn't read as one column
  * of identical blocks.
  *
@@ -102,23 +102,13 @@ export default function ModelPage() {
         intro="I hid whole meetings from the model, let it learn from the rest, then had it call the decks it had never seen. Then I put its calls next to mine."
       >
         <Figure
-          title={`${AGREE_PER_100} out of 100: the same call as me`}
+          title={`${AGREE_PER_100}% accuracy on verdicts`}
           lead="Each dot is one deck, all from meetings the model never saw while it was learning."
           takeaway={`It made the same invest-or-pass call I did on ${AGREE_PER_100} of every 100 decks.`}
           note="Of the decks I backed, it flagged about 2 in 3. And when it said invest, I agreed about 2 times in 3."
           label={`100 dots. ${PER_100.bothInvest} we both said invest, ${PER_100.bothPass} we both said pass, ${PER_100.missed} I backed but the model passed, ${PER_100.falseAlarm} the model said invest but I passed.`}
         >
           <AgreementDots />
-        </Figure>
-
-        <Figure
-          layout="right"
-          title={`Isn't ${pct(HELD_OUT.accuracy)} easy?`}
-          lead={`Fair question. I pass on most decks, so answering "pass" to every single one would already be right ${pct(HELD_OUT.alwaysPassAccuracy)} of the time, and it would never find a deal. So here's a harder test: show it one deck I backed and one I passed, and see which it scores higher.`}
-          takeaway={`The model puts the deck I backed on top ${pct(HELD_OUT.rocAuc)} of the time. Simply adding up the six star ratings manages ${pct(HELD_OUT.starSumRocAuc)}. A coin flip gets 50%.`}
-          label={`Picks the deck I backed: SevenFold's model ${pct(HELD_OUT.rocAuc)}, adding up the six star ratings ${pct(HELD_OUT.starSumRocAuc)}, coin flip 50%.`}
-        >
-          <RankingBars />
         </Figure>
 
         <Figure
@@ -177,13 +167,24 @@ export default function ModelPage() {
         <Figure
           layout="right"
           title="More meetings, sharper calls"
-          lead={`I hid 5 meetings and let the model learn from 3, 5, 7 and so on of the rest, 100 times over, running the same "picks the deck I backed" test each time.`}
-          takeaway="It learned fast: with just 3 meetings it already beats adding up the stars. Each extra meeting still helps, a little at a time."
+          lead="I hid 5 meetings and let the model learn from 3, 5, 7 and so on of the rest, 100 times over. Each time, I showed it a deck I backed and one I passed from the hidden meetings and checked which it scored higher."
+          takeaway="It learned fast: with just 3 meetings it already beats simply adding up the six star ratings. Each extra meeting still helps, a little at a time."
           label="Line chart: picks the deck I backed rises from about 80% after 3 meetings to about 86% after 17, against a flat 75% for adding up the stars."
         >
           <LearningCurve />
         </Figure>
       </Section>
+
+      <aside className="border-t border-ink/10 pt-14 sm:pt-20">
+        <div className="max-w-2xl space-y-3">
+          <h2 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">This is the short version</h2>
+          <p className="text-lg leading-relaxed text-muted">
+            Everything on this page is simplified so it&apos;s easy to follow. Behind it there&apos;s a lot more:
+            cleaning up the data, trying and comparing many different settings, and checks that never made it
+            onto a chart. Think of it as a glimpse of how the model works, not the whole story.
+          </p>
+        </div>
+      </aside>
 
       <details className="group rounded-3xl border border-ink/10 bg-white/50 p-6 backdrop-blur sm:p-8">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-ink">
