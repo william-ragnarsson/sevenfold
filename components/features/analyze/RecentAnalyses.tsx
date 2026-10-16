@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useAnalysis } from "./AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { isStalled } from "@/lib/analyses/status";
-import { analysisPath } from "@/lib/routes";
 
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -55,7 +54,7 @@ export default function RecentAnalyses() {
           {history.map((record) => (
             <li key={record.rowId} className="group flex items-center">
               <Link
-                href={analysisPath(record.id)}
+                href={`/due-diligence/${record.id}`}
                 className="flex min-w-0 flex-1 items-center justify-between gap-4 px-5 py-3 transition-colors hover:bg-white/80"
               >
                 <span className="flex min-w-0 items-center gap-2">

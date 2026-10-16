@@ -8,9 +8,9 @@ import ReportView from "@/components/features/analyze/ReportView";
 import DevCostSidebar from "@/components/features/analyze/DevCostSidebar";
 import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
+import SavePrompt from "@/components/features/auth/SavePrompt";
 import { getAnalysis, type AnalysisRecord } from "@/lib/analyses/store";
 import { isStalled, STALLED_MESSAGE } from "@/lib/analyses/status";
-import { ROUTES } from "@/lib/routes";
 
 /** How often a report whose run is still going is re-read. */
 const POLL_MS = 4000;
@@ -27,7 +27,7 @@ export default function ReportPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { stream, status, currentId, error } = useAnalysis();
-  const { loading: authLoading, user } = useAuth();
+  const { loading: authLoading, isAnonymous, user } = useAuth();
   const userId = user?.id ?? null;
   const scrollRef = useRef<HTMLDivElement>(null);
   const [fetched, setFetched] = useState<Fetched | null>(null);
@@ -83,7 +83,7 @@ export default function ReportPage() {
 
   const backButton = (
     <Link
-      href={ROUTES.decks}
+      href="/due-diligence"
       className="shrink-0 rounded-full border border-ink/15 px-3 py-1.5 text-sm font-medium text-ink/70 transition-colors hover:bg-ink/5 hover:text-ink"
     >
       ← Back
@@ -126,11 +126,16 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-5 pt-6 pb-24">
+      <div className="mx-auto max-w-6xl px-5 py-6">
         {((isLive && status === "error") || failure) && (
           <p className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-red-700">
             {isLive ? error : failure}
           </p>
+        )}
+        {/* Offered once the report is worth keeping, not while it's still
+            being written. */}
+        {isAnonymous && !active && (
+          <SavePrompt className="mb-6" message="This report is saved to this browser only." />
         )}
         <ReportView state={state} active={active} scrollRef={scrollRef} />
       </div>

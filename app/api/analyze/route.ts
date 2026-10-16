@@ -1,5 +1,5 @@
 import type { ProgressEvent } from "@/lib/diligence/types";
-import { RateLimitError, recordFor, requireAccount, SignInRequiredError } from "@/lib/analyses/persist";
+import { RateLimitError, startRecording } from "@/lib/analyses/persist";
 import { logEvent, runAnalysis } from "@/lib/analyses/run";
 import { getSampleDeck } from "@/lib/samples/airbnb";
 import { readFile } from "node:fs/promises";
@@ -46,15 +46,6 @@ export async function POST(req: Request) {
       };
 
       try {
-        // First, before the deck is read or a token spent: runs need an account.
-        let owner;
-        try {
-          owner = await requireAccount();
-        } catch (err) {
-          if (err instanceof SignInRequiredError) return reject(err.message);
-          throw err;
-        }
-
         const form = await req.formData();
         const sampleId = form.get("sample");
 
@@ -90,7 +81,7 @@ export async function POST(req: Request) {
         // an abandoned run still leaves a trace the user can come back to.
         let recorder;
         try {
-          recorder = await recordFor(owner, { pdf: buffer, filename: name });
+          recorder = await startRecording(buffer, name);
         } catch (err) {
           if (err instanceof RateLimitError) return reject(err.message);
           throw err;
@@ -104,8 +95,7 @@ export async function POST(req: Request) {
           logTag: "[analyze]",
         });
       } catch (err) {
-        // Only the account check and request parsing above can land here —
-        // runAnalysis never throws. Either way no run has started.
+        // Only the request parsing above can land here — runAnalysis never throws.
         console.error("[analyze] failed:", err);
         reject("Analysis failed. Please try again.");
       } finally {

@@ -313,7 +313,7 @@ function BackBadge({ onClick }: { onClick: () => void }) {
       type="button"
       onClick={onClick}
       aria-label="Back to all sign-in options"
-      className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-ink/60 shadow-[0_1px_2px_rgba(20,25,35,0.1)] ring-1 ring-ink/10 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+      className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-ink/60 shadow-[0_1px_2px_rgba(20,19,15,0.1)] ring-1 ring-ink/10 transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
         <path d="M14.5 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
@@ -342,7 +342,7 @@ function ModeButton({
       className={
         "h-9 rounded-full text-sm font-medium transition-[color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 " +
         (active
-          ? "bg-white text-ink shadow-[0_1px_2px_rgba(20,25,35,0.12)]"
+          ? "bg-white text-ink shadow-[0_1px_2px_rgba(20,19,15,0.12)]"
           : "text-muted hover:text-ink disabled:hover:text-muted")
       }
     >

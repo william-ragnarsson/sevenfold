@@ -3,10 +3,11 @@
 import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
 import RecentAnalyses from "@/components/features/analyze/RecentAnalyses";
 import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
+import SavePrompt from "@/components/features/auth/SavePrompt";
 import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
 
 /**
- * The analysis workspace used by /app/decks: the labelled upload + run
+ * The analysis workspace used by /due-diligence: the labelled upload + run
  * controls with saved analyses below. (The home page hoists the launcher into
  * the hero card instead and renders RecentAnalyses on its own.)
  *
@@ -14,7 +15,7 @@ import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
  * on the site offers the same way out for someone who turns up without a PDF.
  */
 export default function AnalysisWorkspace() {
-  const { status, refreshHistory } = useAnalysis();
+  const { status, history, refreshHistory } = useAnalysis();
 
   return (
     <div className="space-y-8">
@@ -30,6 +31,9 @@ export default function AnalysisWorkspace() {
       </section>
 
       <LegacyImportPrompt onImported={() => void refreshHistory()} />
+
+      {/* Only worth asking once they have something to lose. */}
+      {history.length > 0 && <SavePrompt />}
 
       <RecentAnalyses />
     </div>

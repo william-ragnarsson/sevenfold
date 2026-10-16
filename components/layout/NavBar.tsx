@@ -4,15 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useLiveRun } from "@/components/features/analyze/useLiveRun";
+import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
 import UserMenu from "@/components/features/auth/UserMenu";
-import { ROUTES } from "@/lib/routes";
 
+// Home is hidden below `sm`: the logo already goes home, and dropping it is
+// what lets the other three fit the pill at 375px.
 const LINKS = [
-  { href: ROUTES.home, label: "Home" },
-  { href: ROUTES.decks, label: "Dashboard" },
-  // The public write-up; inside the app the same text is /app/context.
-  { href: ROUTES.playbook, label: "Context" },
+  { href: "/", label: "Home", hideOnPhone: true },
+  { href: "/due-diligence", label: "Due Diligence" },
+  { href: "/model", label: "Model" },
+  // The route keeps its original name; only the label changed.
+  { href: "/playbook", label: "Context" },
 ];
 
 /**
@@ -24,11 +26,17 @@ const LINKS = [
  * Shows a glowing pill while an analysis runs in the background.
  */
 export default function NavBar() {
-  const run = useLiveRun();
+  const { status, stream, currentId } = useAnalysis();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const loading = status === "loading";
   // Only the home page has a dark card under the nav to merge into.
   const onCard = pathname === "/" && !scrolled;
+  const activeIndex = stream.steps.findIndex((s) => s.status === "active");
+  const activeLabel = activeIndex === -1 ? "Working" : stream.steps[activeIndex].label;
+  // 1-indexed "current step" (not a count of completed steps) — so progress
+  // reads 1/5 → 5/5 rather than 0/5 → 4/5, matching CurrentAnalysisCard.
+  const currentStep = activeIndex === -1 ? stream.steps.length : activeIndex + 1;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -55,7 +63,7 @@ export default function NavBar() {
           "relative flex items-center justify-between gap-2 rounded-full border py-2 pl-4 pr-2 backdrop-blur-xl transition-[background-color,border-color,box-shadow,max-width] duration-300 sm:gap-4 " +
           (onCard
             ? "max-w-none border-transparent bg-transparent shadow-none"
-            : "mx-auto max-w-3xl border-ink/15 bg-paper/85 shadow-[0_1px_2px_rgba(20,25,35,0.05),0_12px_32px_-12px_rgba(20,25,35,0.35)]")
+            : "mx-auto max-w-3xl border-ink/15 bg-paper/85 shadow-[0_1px_2px_rgba(20,19,15,0.05),0_12px_32px_-12px_rgba(20,19,15,0.35)]")
         }
       >
         <Link href="/" className="group flex shrink-0 items-center gap-2">
@@ -71,22 +79,22 @@ export default function NavBar() {
         </Link>
 
         <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-          {run && (
+          {loading && currentId && (
             <Link
-              href={run.href}
+              href={`/due-diligence/${currentId}`}
               className={
-                "flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm font-medium transition-colors duration-300 sm:px-3.5 " +
+                "flex shrink-0 items-center gap-2 rounded-full border px-2.5 py-1.5 text-sm font-medium shadow-[0_0_14px_-2px_var(--accent-bright)] transition-colors duration-300 sm:px-3.5 " +
                 (onCard
                   ? "border-accent-bright/40 bg-accent-bright/10 text-accent-bright hover:bg-accent-bright/20"
                   : "border-accent/30 bg-accent/10 text-accent hover:bg-accent/15")
               }
             >
               <span className="relative flex h-2 w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-current opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-current" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-bright opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-bright" />
               </span>
-              <span className="tabular-nums">{run.step}/{run.steps}</span>
-              <span className="hidden sm:inline">{run.label}…</span>
+              <span className="tabular-nums">{currentStep}/{stream.steps.length}</span>
+              <span className="hidden sm:inline">{activeLabel}…</span>
             </Link>
           )}
           {LINKS.map((link) => {
@@ -100,6 +108,7 @@ export default function NavBar() {
                   // 375px the three of them plus the logo overflowed the pill
                   // and the last one was clipped by its own rounded edge.
                   "shrink-0 rounded-full px-2 py-1.5 text-sm font-medium transition-colors duration-300 sm:px-3 " +
+                  (link.hideOnPhone ? "hidden sm:block " : "") +
                   (onCard
                     ? isActive
                       ? "bg-white/10 text-white"
