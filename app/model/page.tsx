@@ -78,7 +78,7 @@ export default function ModelPage() {
           The model
         </div>
         <h1 className="max-w-3xl text-4xl font-bold leading-[1.05] tracking-[-0.03em] text-ink sm:text-5xl">
-          It makes the same call I did on <span className="marker">{AGREE_PER_100} of 100</span> decks.
+          How the model was trained and how it performs.
         </h1>
         <p className="max-w-2xl text-lg leading-relaxed text-muted">
           SevenFold&apos;s invest-or-pass verdict comes from a model trained on my own decisions as a VC.
