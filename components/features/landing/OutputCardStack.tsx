@@ -20,7 +20,7 @@ const CARDS = [
 
 function Shell({ children, label }: { children: React.ReactNode; label: string }) {
   return (
-    <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-[0_24px_48px_-24px_rgba(20,25,35,0.45)]">
+    <div className="rounded-2xl border border-ink/10 bg-white p-4 shadow-[0_24px_48px_-24px_rgba(20,19,15,0.45)]">
       <div className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-ink/35">
         {label}
       </div>

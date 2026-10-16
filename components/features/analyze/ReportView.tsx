@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import Footer from "@/components/layout/Footer";
 import ChaptersNav from "./ChaptersNav";
 import { REPORT_SECTIONS } from "./reportSections";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
@@ -32,6 +33,7 @@ export default function ReportView({
             {s.render(state, active)}
           </section>
         ))}
+        <Footer />
       </div>
     </div>
   );

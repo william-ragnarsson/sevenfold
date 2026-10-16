@@ -9,7 +9,7 @@ import { useId, useState, type ComponentProps, type ReactNode } from "react";
 
 /** The white pill of the "Continue with …" buttons, also used for secondary actions. */
 export const SECONDARY_BUTTON =
-  "flex h-11 w-full items-center justify-center gap-3 rounded-full border border-ink/15 bg-white px-5 text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(20,25,35,0.06)] transition-[border-color,box-shadow] hover:border-ink/25 hover:shadow-[0_2px_10px_-2px_rgba(20,25,35,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70";
+  "flex h-11 w-full items-center justify-center gap-3 rounded-full border border-ink/15 bg-white px-5 text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(20,19,15,0.06)] transition-[border-color,box-shadow] hover:border-ink/25 hover:shadow-[0_2px_10px_-2px_rgba(20,19,15,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf9f3] disabled:cursor-wait disabled:opacity-70";
 
 /** Small inline text button — "Forgot password?", "Back to log in". */
 export const TEXT_BUTTON =
@@ -17,7 +17,7 @@ export const TEXT_BUTTON =
 
 // 16px text: anything smaller and iOS Safari zooms the page on focus.
 const INPUT =
-  "block h-11 w-full rounded-xl border border-ink/15 bg-white px-3.5 text-base text-ink shadow-[0_1px_2px_rgba(20,25,35,0.04)] outline-none transition-[border-color,box-shadow] placeholder:text-ink/35 focus:border-accent/60 focus:ring-2 focus:ring-accent/20";
+  "block h-11 w-full rounded-xl border border-ink/15 bg-white px-3.5 text-base text-ink shadow-[0_1px_2px_rgba(20,19,15,0.04)] outline-none transition-[border-color,box-shadow] placeholder:text-ink/35 focus:border-accent/60 focus:ring-2 focus:ring-accent/20";
 
 const LABEL = "text-sm font-medium text-ink";
 
@@ -117,7 +117,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-wait disabled:opacity-70 disabled:hover:bg-ink"
+      className="flex h-11 w-full items-center justify-center gap-2.5 rounded-full bg-ink px-5 text-[15px] font-medium text-paper transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbf9f3] disabled:cursor-wait disabled:opacity-70 disabled:hover:bg-ink"
     >
       {pending && <Spinner onDark />}
       {pending ? pendingLabel : children}

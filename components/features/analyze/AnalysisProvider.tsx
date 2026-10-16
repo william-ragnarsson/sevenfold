@@ -23,7 +23,6 @@ import {
   type AnalysisSummary,
 } from "@/lib/analyses/store";
 import type { SampleDeck } from "@/lib/samples/airbnb";
-import { analysisPath } from "@/lib/routes";
 
 const EMPTY_HISTORY: AnalysisSummary[] = [];
 
@@ -60,7 +59,7 @@ export function useAnalysis(): AnalysisContextValue {
 }
 
 export default function AnalysisProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading, dataVersion } = useAuth();
+  const { user, loading: authLoading, dataVersion, ensureAnonymous } = useAuth();
   const [file, setFileState] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -119,12 +118,12 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
   const run = useCallback(
     async ({ id, body, force }: { id: string; body: FormData; force?: boolean }) => {
       // Claim the run and navigate *first*. Everything below needs the network
-      // — the dedupe check is a round-trip before the run's own request — and
-      // doing that before any state changed left the button sitting there
-      // looking dead for the whole handshake. Both outcomes land on this same
-      // URL anyway.
+      // — minting an anonymous user costs a getUser plus a signInAnonymously,
+      // and the dedupe check is a third round-trip — and doing that before any
+      // state changed left the button sitting there looking dead for the whole
+      // handshake. Both outcomes land on this same URL anyway.
       //
-      // It has to be the full claim, not just the push: the report page
+      // It has to be the full claim, not just the push: `/due-diligence/[id]`
       // decides it is showing a live run from `currentId`, so navigating
       // without setting it flashes "This analysis isn't available" until the
       // lookup returns.
@@ -132,16 +131,16 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       setStatus("loading");
       setError("");
       dispatch({ type: "reset" });
-      router.push(analysisPath(id));
+      router.push(`/due-diligence/${id}`);
 
-      // No account check here: the route refuses runs without one, and that
-      // error lands in the catch below like any other. Runs start from the
-      // dashboard, which proxy.ts already keeps to signed-in accounts.
-      //
-      // The dedupe check is a convenience, not a gate, so it isn't allowed to
-      // take the run down with it — and now that the loading state is already
-      // on screen, an unhandled rejection here would strand it there forever.
+      // Both of these are conveniences, not gates, so neither is allowed to take
+      // the run down with it — and now that the loading state is already on
+      // screen, an unhandled rejection here would strand it there forever.
       try {
+        // Nothing is gated, but persistence needs *a* user — so one is minted
+        // here, at the first real action, rather than on every page load.
+        await ensureAnonymous();
+
         // Already analyzed this exact deck — hand the page over to the saved
         // copy rather than spending another few minutes on the same answer.
         if (!force) {
@@ -183,7 +182,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
         await refreshHistory();
       }
     },
-    [router, refreshHistory],
+    [router, ensureAnonymous, refreshHistory],
   );
 
   const start = useCallback(

@@ -13,7 +13,6 @@ import { AuthError, type User } from "@supabase/supabase-js";
 import { tryGetSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ACCOUNT_EXISTS, describeAuthError, NEEDS_FRESH_LOGIN } from "./authErrors";
 import { isAuthProviderId, type AuthProviderId } from "./providers";
-import { ROUTES } from "@/lib/routes";
 
 /**
  * Where the id of an anonymous user is parked while the browser is away at an
@@ -68,9 +67,8 @@ interface AuthContextValue {
    */
   dataVersion: number;
   /**
-   * The current user, creating an anonymous one if needed. Analyses don't call
-   * this any more, since a run needs a real account; only the legacy-history
-   * import does, and never on page load — anonymous users are real
+   * The current user, creating an anonymous one if needed. Called at the moment
+   * someone starts an analysis, never on page load — anonymous users are real
    * `auth.users` rows and we don't want one per crawler visit.
    */
   ensureAnonymous: () => Promise<User | null>;
@@ -79,7 +77,7 @@ interface AuthContextValue {
   /** Creates the account; the user is signed in once they open the confirmation link. */
   signUpWithEmail: (email: string, password: string) => Promise<EmailAuthResult>;
   resendConfirmation: (email: string) => Promise<EmailAuthResult>;
-  /** Emails a link that signs the user in on the password page (`ROUTES.password`) to choose a new one. */
+  /** Emails a link that signs the user in on `/account/password` to choose a new one. */
   sendPasswordReset: (email: string) => Promise<EmailAuthResult>;
   /** Sets a password for the signed-in user — after a reset link, or from the account page. */
   updatePassword: (password: string) => Promise<EmailAuthResult>;
@@ -189,8 +187,8 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data, error: signInError } = await supabase.auth.signInAnonymously();
       if (signInError) {
-        // Anonymous sign-ins disabled, or rate-limited. The caller carries on
-        // without a user.
+        // Anonymous sign-ins disabled, or rate-limited. The analysis still runs;
+        // it just won't be saved.
         console.warn("[auth] anonymous sign-in failed:", signInError.message);
         return null;
       }
@@ -335,7 +333,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       // Supabase answers the same whether or not the address has an account,
       // so this can't be used to find out who's signed up.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: callbackUrl(ROUTES.password, "recovery"),
+        redirectTo: callbackUrl("/account/password", "recovery"),
       });
       return resetError ? failed(resetError) : { status: "check-email" };
     },

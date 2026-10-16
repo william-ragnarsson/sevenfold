@@ -19,10 +19,16 @@ export default function AuthCard({
   return (
     <div
       className={
-        "relative rounded-3xl border border-ink/10 bg-white p-6 shadow-[0_1px_2px_rgba(20,25,35,0.05),0_24px_56px_-24px_rgba(20,25,35,0.4)] " +
+        "relative rounded-3xl border border-ink/10 bg-[#fbf9f3] p-6 shadow-[0_1px_2px_rgba(20,19,15,0.05),0_24px_56px_-24px_rgba(20,19,15,0.4)] " +
         className
       }
     >
+      {/* A faint wash of the marker colour behind the logo. Clipped in its own
+          layer so callers can still make the card itself scroll. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+        <div className="absolute -left-20 -top-24 h-56 w-56 rounded-full bg-marker/40 blur-3xl" />
+      </div>
+
       {onClose && (
         <button
           type="button"
@@ -48,7 +54,7 @@ export function AuthCardLogo() {
       alt=""
       width={40}
       height={40}
-      className="rounded-xl shadow-[0_1px_2px_rgba(20,25,35,0.1)] ring-1 ring-ink/10"
+      className="rounded-xl shadow-[0_1px_2px_rgba(20,19,15,0.1)] ring-1 ring-ink/10"
     />
   );
 }
