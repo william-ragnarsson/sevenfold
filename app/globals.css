@@ -155,7 +155,39 @@ html, body {
   -webkit-mask-image: radial-gradient(ellipse 80% 70% at 30% 20%, #000 0%, transparent 100%);
 }
 
+/* /model charts: each one plays its entrance once it scrolls into view, when
+   Reveal sets `data-shown`. The hidden state only applies while scripting is
+   on, so with no JS (or before Reveal exists) every chart is simply drawn.
+   `--d` staggers the pieces of one chart. */
+.r-grow-x,
+.r-grow-y,
+.r-pop,
+.r-wipe {
+  transition:
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.5s ease-out,
+    clip-path 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition-delay: var(--d, 0ms);
+}
+.r-grow-x { transform-origin: left center; }
+.r-grow-y { transform-origin: center bottom; }
+@media (scripting: enabled) {
+  .reveal:not([data-shown]) .r-grow-x { transform: scaleX(0); }
+  .reveal:not([data-shown]) .r-grow-y { transform: scaleY(0); }
+  .reveal:not([data-shown]) .r-pop { opacity: 0; transform: scale(0.4); }
+  .reveal:not([data-shown]) .r-wipe { clip-path: inset(0 100% 0 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .r-grow-x,
+  .r-grow-y,
+  .r-pop,
+  .r-wipe {
+    transition: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    clip-path: none !important;
+  }
   .marker,
   .fade-up,
   .pop-in,
