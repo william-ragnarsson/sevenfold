@@ -1,10 +1,18 @@
+import Link from "next/link";
 import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
 import HeroReportMock from "@/components/features/hero/HeroReportMock";
 import RotatingWord from "@/components/features/hero/RotatingWord";
+import { HELD_OUT, pct } from "@/lib/invest/results";
 
-const stats = [
+// The model stat links on to /model: it's the one claim here a visitor will
+// want proof of, and the accuracy figure is the hook.
+const stats: { value: string; label: string; href?: string }[] = [
   { value: "800+ pitch decks", label: "The training set behind the model" },
-  { value: "Custom-trained AI", label: "Built on 800+ real VC verdicts" },
+  {
+    value: "Custom-trained AI",
+    label: `Matches real VC calls ${pct(HELD_OUT.accuracy)} of the time →`,
+    href: "/model",
+  },
   { value: "Every claim sourced", label: "Tagged deck, web, or inference" },
   { value: "Free, no sign-up", label: "No account, no card, no catch" },
 ];
@@ -53,12 +61,31 @@ export default function Hero() {
         className="fade-up relative mt-8 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-white/10 pt-5 lg:mt-10 lg:pt-6 lg:grid-cols-4 lg:divide-x lg:divide-white/10"
         style={{ animationDelay: "0.2s" }}
       >
-        {stats.map((s, i) => (
-          <div key={s.label} className={i === 0 ? "lg:pr-6" : "lg:px-6"}>
-            <div className="text-base font-bold tracking-tight text-white lg:text-lg">{s.value}</div>
-            <div className="mt-0.5 text-xs text-white/50">{s.label}</div>
-          </div>
-        ))}
+        {stats.map((s, i) => {
+          const pad = i === 0 ? "lg:pr-6" : "lg:px-6";
+          const body = (
+            <>
+              <div className="text-base font-bold tracking-tight text-white lg:text-lg">{s.value}</div>
+              <div
+                className={
+                  "mt-0.5 text-xs " +
+                  (s.href ? "text-accent-bright/80 transition-colors group-hover:text-accent-bright" : "text-white/50")
+                }
+              >
+                {s.label}
+              </div>
+            </>
+          );
+          return s.href ? (
+            <Link key={s.label} href={s.href} className={"group block " + pad}>
+              {body}
+            </Link>
+          ) : (
+            <div key={s.label} className={pad}>
+              {body}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

@@ -53,6 +53,9 @@ export default function Footer({ flush = false }: { flush?: boolean }) {
               {l.label}
             </a>
           ))}
+          <Link href="/model" className="text-sm font-medium text-muted transition-colors hover:text-ink">
+            How the model works
+          </Link>
           <Link href="/playbook" className="text-sm font-medium text-muted transition-colors hover:text-ink">
             Context database
           </Link>

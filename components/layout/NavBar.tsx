@@ -7,9 +7,12 @@ import { useEffect, useState } from "react";
 import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
 import UserMenu from "@/components/features/auth/UserMenu";
 
+// Home is hidden below `sm`: the logo already goes home, and dropping it is
+// what lets the other three fit the pill at 375px.
 const LINKS = [
-  { href: "/", label: "Home" },
+  { href: "/", label: "Home", hideOnPhone: true },
   { href: "/due-diligence", label: "Due Diligence" },
+  { href: "/model", label: "Model" },
   // The route keeps its original name; only the label changed.
   { href: "/playbook", label: "Context" },
 ];
@@ -105,6 +108,7 @@ export default function NavBar() {
                   // 375px the three of them plus the logo overflowed the pill
                   // and the last one was clipped by its own rounded edge.
                   "shrink-0 rounded-full px-2 py-1.5 text-sm font-medium transition-colors duration-300 sm:px-3 " +
+                  (link.hideOnPhone ? "hidden sm:block " : "") +
                   (onCard
                     ? isActive
                       ? "bg-white/10 text-white"

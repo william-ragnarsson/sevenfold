@@ -1,24 +1,26 @@
+import Link from "next/link";
 import DealLog from "@/components/features/landing/DealLog";
+import { DATA, HELD_OUT, pct } from "@/lib/invest/results";
 
 /**
- * The credibility section: where the training data came from.
+ * The credibility section, and the first thing under the hero: where the
+ * training data came from, and how often the model agrees with me.
  *
  * It argues one thing — the dataset is real, it's mine, and it isn't public —
  * so the layout puts the claim and the evidence side by side rather than
- * explaining a pipeline. The schematic that used to live here described *how*
- * the model runs, which is a different (and less contested) question, and it
- * pushed the numbers that actually carry the argument below the fold.
+ * explaining a pipeline. It is also the way in to /model, which has the charts.
  *
- * The figures are load-bearing rather than round: 7 is the width of the feature
- * vector in `lib/invest/model.ts`, and 2 is what the acceptance gate can return.
- * Deliberately absent: accuracy and AUC. They are measured, on sessions the
- * model never saw (`lib/invest/model-card.json`), but a single headline figure
- * from ~770 decks would claim more precision than it has.
+ * The figures are load-bearing rather than round. The accuracy is the
+ * conservative one, on whole meetings the model never saw (session-grouped
+ * nested CV), and its caveats — most decks are passes, so "always pass" scores
+ * 74% too — live on /model next to the ranking test that answers them. 765 is
+ * the decisions it learned from, not the decks reviewed; 7 is the width of the
+ * feature vector in `lib/invest/model.ts`.
  */
 const FIGURES = [
-  { value: "800+", label: "Decks reviewed by hand", note: "Each one read end to end, not scraped." },
+  { value: pct(HELD_OUT.accuracy), label: "Same call as me", note: "On meetings the model never saw while learning." },
+  { value: String(DATA.rows), label: "Real invest-or-pass calls", note: "Each one a real decision. Nothing scraped." },
   { value: "7", label: "Signals scored per deck", note: "The model's whole input. Nothing else reaches it." },
-  { value: "2", label: "Outcomes", note: "Invest or pass: a 0–100 score against an acceptance gate." },
 ];
 
 export default function InvestModel() {
@@ -59,6 +61,13 @@ export default function InvestModel() {
               </div>
             ))}
           </dl>
+
+          <Link
+            href="/model"
+            className="mt-8 inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent/40 hover:text-accent"
+          >
+            See how it was trained and tested →
+          </Link>
         </div>
       </div>
     </section>

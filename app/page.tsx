@@ -10,8 +10,9 @@ import ClosingCta from "@/components/features/landing/ClosingCta";
  * full-bleed tonal bands, hairline rules, and genuinely different layout shapes
  * (2-col asymmetric / horizontal schematic / centred column).
  *
- * A *product artifact* — the feedback cards in §01 — may still be framed: that
- * is content, not section chrome. Wrapping a section itself in a card is what
+ * A *product artifact* — the deal log beside InvestModel, or the feedback cards
+ * in PitchPerspective — may still be framed: that is content, not section
+ * chrome. Wrapping a section itself in a card is what
  * made this page incoherent before; don't reintroduce it.
  *
  * Widths: the hero is full-bleed, everything else is max-w-6xl. Text blocks cap
@@ -25,14 +26,16 @@ export default function Home() {
         <Hero />
       </div>
 
+      {/* The model leads: how it was trained and how often it agrees with a
+          real VC is the hook, and it links on to /model for the full story. */}
       <div className="mx-auto max-w-6xl px-6 py-32 sm:py-44">
-        <PitchPerspective />
+        <InvestModel />
       </div>
 
       {/* Both this and the section above sit on paper, so a hairline keeps them
           from reading as one long block. */}
       <div className="mx-auto max-w-6xl border-t border-ink/8 px-6 py-24 sm:py-32">
-        <InvestModel />
+        <PitchPerspective />
       </div>
 
       {/* The one band on the page, and it closes it. `border-t` only — a bottom
