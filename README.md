@@ -20,7 +20,7 @@
 
 ## How It Works
 
-SevenFold is based on a real-life context database put together while reviewing **800+ pitch decks** at **Plug and Play Tech Center**, one of the world's most active accelerators. 
+SevenFold is based on a real-life rubric put together while reviewing **800+ pitch decks** at **Plug and Play Tech Center**, one of the world's most active accelerators. 
 
 ```mermaid
 graph TD
@@ -31,7 +31,7 @@ graph TD
     classDef external fill:#11111b,stroke:#a6e3a1,stroke-width:1px,color:#a6e3a1;
 
     A[Pitch Deck PDF]:::main -->|1. Extract Text| B(Pipeline Diligence Engine):::process
-    Playbook[Context database]:::main --> B
+    Playbook[Rubric]:::main --> B
     
     B -->|2. Detect Gaps| C{Gaps Found?}:::process
     C -->|Yes| D[3. Web Search & Grounding]:::external
@@ -67,9 +67,9 @@ graph TD
 
 ---
 
-## Context database & Custom ML Model
+## Rubric & Custom ML Model
 
-### 1. The context database
+### 1. The rubric
 Instead of generic AI advice, SevenFold judges pitch decks against a strict, battle-tested accelerator template:
 *   **Team Complementarity:** Evaluates whether there's a balanced split of engineering and business/domain expertise.
 *   **Founder Commitment:** Highlights paths to full-time commitment and identifies part-time risks.

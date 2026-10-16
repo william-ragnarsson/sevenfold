@@ -57,7 +57,7 @@ export default function Footer({ flush = false }: { flush?: boolean }) {
             How the model works
           </Link>
           <Link href="/playbook" className="text-sm font-medium text-muted transition-colors hover:text-ink">
-            Context database
+            Rubric
           </Link>
           <span className="text-sm text-muted/60">© {new Date().getFullYear()}</span>
         </div>

@@ -14,7 +14,7 @@ const LINKS = [
   { href: "/due-diligence", label: "Due Diligence" },
   { href: "/model", label: "Model" },
   // The route keeps its original name; only the label changed.
-  { href: "/playbook", label: "Context" },
+  { href: "/playbook", label: "Rubric" },
 ];
 
 /**
