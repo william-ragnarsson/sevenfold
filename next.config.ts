@@ -36,19 +36,6 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // The dashboard moved under /app (see lib/routes.ts). The old paths live on
-  // in bookmarks, sent emails and the report links MCP clients were given, so
-  // they forward, query string and all. Temporary rather than permanent: a
-  // 308 is cached by the browser for good, and these paths may move again
-  // as the app grows.
-  async redirects() {
-    return [
-      { source: "/app", destination: "/app/decks", permanent: false },
-      { source: "/due-diligence/:path*", destination: "/app/decks/:path*", permanent: false },
-      { source: "/account/:path*", destination: "/app/settings/:path*", permanent: false },
-    ];
-  },
-
   async rewrites() {
     return [
       // The metadata URL the MCP server's 401 points at (RFC 9728's

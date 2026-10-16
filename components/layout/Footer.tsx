@@ -7,8 +7,9 @@ const LINKS = [
 ];
 
 /**
- * The marketing pages' footer, rendered by MarketingShell. The dashboard
- * under /app has none: its sidebar carries everything a footer would.
+ * Shared site footer — rendered once in app/layout.tsx (so it's on every page)
+ * and again at the end of the analysis report's section list, where it also
+ * gives the last chapters real trailing content to scroll to.
  *
  * `flush` is for pages that end in a full-bleed band. It drops the top margin —
  * which would otherwise leave a strip of bare paper between the band's bottom

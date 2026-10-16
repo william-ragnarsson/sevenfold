@@ -24,7 +24,7 @@ const TONES = {
   light: {
     surface: "bg-white/55 backdrop-blur hover:bg-white/80",
     surfaceElevated:
-      "bg-white shadow-[0_40px_80px_-40px_rgba(20,25,35,0.45)] hover:shadow-[0_48px_90px_-40px_rgba(20,25,35,0.5)]",
+      "bg-white shadow-[0_40px_80px_-40px_rgba(20,19,15,0.45)] hover:shadow-[0_48px_90px_-40px_rgba(20,19,15,0.5)]",
     dash: "text-ink/20",
     dashActive: "text-accent",
     icon: "bg-ink/5 text-ink",

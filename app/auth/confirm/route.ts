@@ -1,8 +1,7 @@
 import type { NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { ROUTES, safeNext } from "@/lib/routes";
-import { deadLink, redirectTo } from "../redirects";
+import { deadLink, redirectTo, safeNext } from "../redirects";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type");
 
   if (!tokenHash || !isOtpType(type)) {
-    return redirectTo(request, ROUTES.signIn, {
+    return redirectTo(request, "/account", {
       auth_error: "That link is incomplete. Try copying the whole link from the email.",
     });
   }
@@ -34,7 +33,7 @@ export async function GET(request: NextRequest) {
   const flow = type === "recovery" ? "recovery" : "signup";
   const next = safeNext(
     searchParams.get("next"),
-    flow === "recovery" ? ROUTES.password : ROUTES.decks,
+    flow === "recovery" ? "/account/password" : "/due-diligence",
   );
 
   const supabase = await createSupabaseServerClient();

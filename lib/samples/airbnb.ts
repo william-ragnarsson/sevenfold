@@ -25,7 +25,7 @@
  */
 
 export interface SampleDeck {
-  /** Hex SHA-256 of the PDF — the dedupe key and the /app/decks/<id> slug. */
+  /** Hex SHA-256 of the PDF — the dedupe key and the /due-diligence/<id> slug. */
   id: string;
   /** Shown in the prompt, and the report's fallback name. */
   label: string;
@@ -37,7 +37,7 @@ export interface SampleDeck {
 }
 
 export const AIRBNB_SAMPLE: SampleDeck = {
-  // The PDF's real SHA-256, not a made-up slug. `/app/decks/[id]`, the
+  // The PDF's real SHA-256, not a made-up slug. `/due-diligence/[id]`, the
   // `analyses.deck_hash` column and the client's dedupe check all key off the
   // deck hash, so the sample has to carry its actual one — otherwise its report
   // would 404 the moment you reloaded. Recompute with:

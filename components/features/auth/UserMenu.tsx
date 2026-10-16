@@ -4,16 +4,17 @@ import { useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "./AuthProvider";
 import SignInCard from "./SignInCard";
-import { ROUTES } from "@/lib/routes";
 
 /**
  * The nav's account control: a "Log in / Sign up" pill until there's a real
  * identity, then an avatar with a small menu.
  *
  * The signed-out state opens a dropdown anchored under the button — matching
- * the signed-in menu below it — rather than a full-screen modal: the marketing
- * pages it sits on need no account, so this is a low-key "here's an option"
- * rather than something that needs to grab the whole screen's attention.
+ * the signed-in menu below it — rather than a full-screen modal. Nothing in
+ * this app is ever gated behind an account, so this is a low-key "here's an
+ * option" rather than something that needs to grab the whole screen's
+ * attention. (`SavePrompt` still uses the centered `SignInDialog` for the one
+ * place sign-in is an active nudge after a finished report.)
  *
  * `onCard` mirrors NavBar's own variant — on the home page the nav starts
  * inside the dark hero card and everything in it has to switch to light text.
@@ -128,7 +129,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
       {panelOpen && (
         <div
           role="menu"
-          className="pop-in absolute right-0 top-full z-50 mt-4 w-56 origin-top-right overflow-hidden rounded-2xl border border-ink/12 bg-paper shadow-[0_1px_2px_rgba(20,25,35,0.05),0_16px_40px_-16px_rgba(20,25,35,0.4)]"
+          className="pop-in absolute right-0 top-full z-50 mt-4 w-56 origin-top-right overflow-hidden rounded-2xl border border-ink/12 bg-paper shadow-[0_1px_2px_rgba(20,19,15,0.05),0_16px_40px_-16px_rgba(20,19,15,0.4)]"
         >
           <div className="border-b border-ink/8 px-4 py-3">
             <p className="truncate text-sm font-medium text-ink">{name || "Signed in"}</p>
@@ -137,7 +138,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
             )}
           </div>
           <Link
-            href={ROUTES.decks}
+            href="/due-diligence"
             role="menuitem"
             onClick={() => setOpenFor(null)}
             className="block px-4 py-2.5 text-sm text-ink transition-colors hover:bg-ink/[0.04]"
@@ -145,7 +146,7 @@ export default function UserMenu({ onCard }: { onCard: boolean }) {
             My analyses
           </Link>
           <Link
-            href={ROUTES.settings}
+            href="/account"
             role="menuitem"
             onClick={() => setOpenFor(null)}
             className="block px-4 py-2.5 text-sm text-ink transition-colors hover:bg-ink/[0.04]"

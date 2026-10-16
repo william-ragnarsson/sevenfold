@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useAnalysis } from "./AnalysisProvider";
-import { analysisPath } from "@/lib/routes";
 
 type CurrentAnalysisCardProps = {
   /** `dark` restyles the card for the hero card's dark surface. */
@@ -11,8 +10,9 @@ type CurrentAnalysisCardProps = {
 
 const TONES = {
   light: {
-    // Opaque white, like the elevated dropzone, so it lifts off the grey paper.
-    card: "border-ink/10 bg-white shadow-[0_1px_2px_rgba(20,25,35,0.04),0_24px_48px_-28px_rgba(20,25,35,0.35)] hover:border-ink/20",
+    // Opaque, like the elevated dropzone: a translucent panel lets the page's
+    // dot grid show through and reads as unfinished.
+    card: "border-ink/10 bg-[#fbf9f3] shadow-[0_1px_2px_rgba(20,19,15,0.04),0_24px_48px_-28px_rgba(20,19,15,0.35)] hover:border-ink/20",
     name: "text-ink",
     label: "text-ink/80",
     count: "text-muted",
@@ -62,8 +62,8 @@ export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisC
     <div className={`group relative rounded-2xl border text-left transition-colors ${t.card}`}>
       <div className="flex items-center gap-3 px-4 pb-4 pt-5 sm:gap-4 sm:px-5">
         <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden>
-          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${t.fill} opacity-60`} />
-          <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${t.fill}`} />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-bright opacity-60" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent-bright" />
         </span>
         <div className="min-w-0 flex-1">
           <p className={`truncate font-semibold tracking-tight ${t.name}`}>{name}</p>
@@ -75,7 +75,7 @@ export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisC
           </p>
         </div>
         <Link
-          href={analysisPath(currentId)}
+          href={`/due-diligence/${currentId}`}
           className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors after:absolute after:inset-0 after:rounded-2xl ${t.view}`}
         >
           View<span className="hidden sm:inline"> report</span>{" "}
