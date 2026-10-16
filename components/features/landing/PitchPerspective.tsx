@@ -8,7 +8,7 @@ import OutputCardStack from "@/components/features/landing/OutputCardStack";
  * title, standfirst and questions read as one block balanced against the cards.
  * Hoisting it out leaves it stranded above a vertically-centred grid.
  *
- * The three questions are the promise stated as questions the context database
+ * The three questions are the promise stated as questions the rubric
  * answers — concrete enough to be worth something, without claiming to know
  * findings about a deck nobody has uploaded yet.
  */
@@ -31,7 +31,7 @@ export default function PitchPerspective() {
           <p className="mt-6 text-lg leading-relaxed text-muted">
             VC firms run an investment system to evaluate hundreds of startups every week. Prepare
             your pitch against that same system, drawn from{" "}
-            <span className="marker">my context database of real deal reviews</span>.
+            <span className="marker">my rubric from real deal reviews</span>.
           </p>
 
           {/* `divide-y` puts rules only *between* items. A border above the
