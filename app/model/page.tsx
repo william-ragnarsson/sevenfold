@@ -2,16 +2,12 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import AgreementDots from "@/components/features/model/AgreementDots";
-import BuildUp from "@/components/features/model/BuildUp";
-import DataSplit from "@/components/features/model/DataSplit";
 import Figure from "@/components/features/model/Figure";
 import FundingStep from "@/components/features/model/FundingStep";
 import FutureTest from "@/components/features/model/FutureTest";
 import LearningCurve from "@/components/features/model/LearningCurve";
 import RankingBars from "@/components/features/model/RankingBars";
-import RatingHeatmap from "@/components/features/model/RatingHeatmap";
-import RatingImpact from "@/components/features/model/RatingImpact";
-import TestSchematic from "@/components/features/model/TestSchematic";
+import TrainingReplay from "@/components/features/model/TrainingReplay";
 import {
   AGREE_PER_100,
   DATA,
@@ -19,11 +15,11 @@ import {
   GATE,
   HELD_OUT,
   NEAR_PERFECT_AT_3M,
-  ONE_STAR_MORE,
   PER_100,
   RECIPE,
   pct,
 } from "@/lib/invest/results";
+import { MEDIAN_RATINGS, TRAINING_FRAMES } from "@/lib/invest/training-frames";
 
 export const metadata: Metadata = {
   title: "How the model works · SevenFold",
@@ -37,12 +33,15 @@ export const metadata: Metadata = {
  * data scientists: results first (how often it agrees with me, and against
  * what), then what moves the score, then how it learned. Each chart carries one
  * plain sentence; the proper names live in "For the curious" at the bottom.
+ * The figures alternate sides (`layout`) so the page doesn't read as one column
+ * of identical blocks.
  *
  * Every number comes from `lib/invest/results.ts`, so a retrain updates the page.
  */
 
 const gate100 = Math.round(GATE * 100);
-const [top, second] = ONE_STAR_MORE;
+const startScore = Math.round(TRAINING_FRAMES.vp5[0][0]);
+const finalVp5 = TRAINING_FRAMES.vp5[TRAINING_FRAMES.vp5.length - 1];
 const fixed = (x: number, digits = 3) => x.toFixed(digits);
 
 function Section({ n, title, intro, children }: { n: number; title: string; intro: ReactNode; children: ReactNode }) {
@@ -113,6 +112,7 @@ export default function ModelPage() {
         </Figure>
 
         <Figure
+          layout="right"
           title={`Isn't ${pct(HELD_OUT.accuracy)} easy?`}
           lead={`Fair question. I pass on most decks, so answering "pass" to every single one would already be right ${pct(HELD_OUT.alwaysPassAccuracy)} of the time, and it would never find a deal. So here's a harder test: show it one deck I backed and one I passed, and see which it scores higher.`}
           takeaway={`The model puts the deck I backed on top ${pct(HELD_OUT.rocAuc)} of the time. Simply adding up the six star ratings manages ${pct(HELD_OUT.starSumRocAuc)}. A coin flip gets 50%.`}
@@ -122,6 +122,7 @@ export default function ModelPage() {
         </Figure>
 
         <Figure
+          layout="stacked"
           title="Tested on the newest meetings"
           lead={`The toughest version: line the meetings up in order, and score each of the newest ${FUTURE.sessions} with a model that only learned from the meetings before it. Just like using it on next week's decks.`}
           takeaway={`The same call as me on ${pct(FUTURE.accuracy)} of those ${FUTURE.rows} decks, and it caught ${FUTURE.caught} of the ${FUTURE.invest} I backed.`}
@@ -145,25 +146,6 @@ export default function ModelPage() {
         }
       >
         <Figure
-          title="Two ratings do most of the work"
-          lead="Take every deck, give it one more star on a single rating, and see how far its score moves."
-          takeaway={`${top.label} and ${second.label.toLowerCase()} move the score the most: about ${Math.round(top.points)} and ${Math.round(second.points)} points per star. Team and social impact barely move it at all.`}
-          note="That doesn't mean the team doesn't matter. In these meetings, team scores rarely separated the decks I backed from the ones I passed once the other ratings were known."
-          label={`Score change for one more star: ${ONE_STAR_MORE.map((r) => `${r.label} ${r.points.toFixed(1)} points`).join(", ")}.`}
-        >
-          <RatingImpact />
-        </Figure>
-
-        <Figure
-          title="Value proposition gets you in the door"
-          lead="The two big ratings against each other, with everything else set to a typical deck's ratings and $500K raised. Each square shows the score."
-          takeaway={`A 4 or 5 on value proposition gets a deck over the bar, as long as competitive advantage is at least 2. Below 4, even a perfect competitive advantage falls just short.`}
-          label={`Grid of scores by value proposition and competitive advantage stars. Scores of ${gate100} or more need value proposition 4 or 5 and competitive advantage 2 or more.`}
-        >
-          <RatingHeatmap />
-        </Figure>
-
-        <Figure
           title="How much a startup has raised matters a lot"
           lead="Every deck, scored again as if it had raised the amount on the left. Only the funding changes."
           takeaway="I backed early companies. Up to about $1.6M raised, over 40 in 100 decks clear the bar. Past that, only about 2 in 100 do."
@@ -177,39 +159,23 @@ export default function ModelPage() {
       <Section
         n={3}
         title="How it learned"
-        intro="No scraped data, no generic startup advice. It learned from one thing: real invest-or-pass calls I made, deck by deck."
+        intro={`No scraped data, no generic startup advice. It learned from one thing: ${DATA.rows} real invest-or-pass calls I made across ${DATA.sessions} partner meetings, deck by deck.`}
       >
         <Figure
-          title={`${DATA.rows} real decisions`}
-          lead={`Every deck reviewed across ${DATA.sessions} partner meetings, each rated on six things and given a final invest-or-pass call.`}
-          takeaway={`I backed about 1 in 4 of them. The model learned from all ${DATA.rows}, the yeses and the nos.`}
-          note={`${DATA.reviewed - DATA.rows} decks were left out because they were missing ratings or never got a final call.`}
-          label={`${DATA.reviewed} decks reviewed: ${DATA.invest} backed, ${DATA.pass} passed, ${DATA.reviewed - DATA.rows} left out.`}
+          layout="stacked"
+          title="Watch it learn"
+          lead={`The model is a stack of ${RECIPE.trees} small rules. Each one looks at what the rules before it got wrong and nudges the scores to fix it. Here are a few made-up decks, scored at every amount raised as the rules pile up.`}
+          takeaway={`Before the first rule, every deck scores the same ${startScore}: about how often I said yes. By the last, a strong value proposition carries a deck well over the bar, and raising past about $1.6M pulls almost every deck back under it.`}
+          note={`Made-up decks, not real ones: the ratings that aren't shown sit at a typical deck's (team ${MEDIAN_RATINGS.team}, technology ${MEDIAN_RATINGS.technology}, market ${MEDIAN_RATINGS.marketSize}, competitive advantage ${MEDIAN_RATINGS.competitiveAdvantage}, social impact ${MEDIAN_RATINGS.socialImpact}). Two house rules hold throughout: a better rating can never lower the score, and recent meetings count a bit more.`}
         >
-          <DataSplit />
+          <TrainingReplay
+            gate={gate100}
+            label={`Line chart of score against amount raised, replayed over ${RECIPE.trees} rules. Every line starts flat at ${startScore}. After the last rule, a deck with value proposition 5 scores ${Math.round(finalVp5[0])} with nothing raised, ${Math.round(finalVp5[4])} at $1.5M and ${Math.round(finalVp5[5])} at $1.7M. Only five stars on everything stays over the bar of ${gate100} past $1.6M.`}
+          />
         </Figure>
 
         <Figure
-          title={`${RECIPE.trees} small rules of thumb`}
-          lead={`The model is a stack of ${RECIPE.trees} tiny rules. Each one looks at what the rules before it got wrong, and nudges the score to fix it.`}
-          takeaway="After 1 rule, every deck scores about the same. By 10, an invest zone starts to appear. By 100, the scores spread out from almost 0 to almost 90."
-          note={`Two house rules: a better rating can never lower the score, and recent meetings count a bit more (the oldest about half as much as the newest).`}
-          label="Three small score grids after 1, 10 and 100 rules: nearly flat, then an invest zone appearing, then a full spread."
-        >
-          <BuildUp />
-        </Figure>
-
-        <Figure
-          title="Always tested on meetings it never saw"
-          lead={`I split the meetings into ${HELD_OUT.folds} groups. The model learns from ${HELD_OUT.folds - 1} and is tested on the fifth, then the groups rotate until each has had its turn. Then I reshuffle and do it all again, ${HELD_OUT.repeats} times.`}
-          takeaway="Whole meetings are hidden, never single decks, so it's always judged on a fresh week: exactly how it gets used on your deck."
-          note={`Even the model's settings and its ${gate100} bar are picked again in every round, using only the learning groups. That's why ${pct(HELD_OUT.accuracy)} is a fair number.`}
-          label={`${HELD_OUT.folds} rounds, each testing a different group of meetings, repeated ${HELD_OUT.repeats} times for ${HELD_OUT.testCalls.toLocaleString("en-US")} test calls.`}
-        >
-          <TestSchematic />
-        </Figure>
-
-        <Figure
+          layout="right"
           title="More meetings, sharper calls"
           lead={`I hid 5 meetings and let the model learn from 3, 5, 7 and so on of the rest, 100 times over, running the same "picks the deck I backed" test each time.`}
           takeaway="It learned fast: with just 3 meetings it already beats adding up the stars. Each extra meeting still helps, a little at a time."
@@ -253,6 +219,11 @@ export default function ModelPage() {
           <li>
             <span className="font-medium text-ink">Gate.</span> {fixed(GATE)}, the score above which the model
             invests in the same share of held-out decks as the training labels did.
+          </li>
+          <li>
+            <span className="font-medium text-ink">Replay.</span> Staged predictions after each of the{" "}
+            {RECIPE.trees} trees for synthetic decks: value proposition and funding varied, the other ratings at
+            their training medians.
           </li>
           <li>
             <span className="font-medium text-ink">Learning curve.</span> Hold out 5 random meetings, train on k of

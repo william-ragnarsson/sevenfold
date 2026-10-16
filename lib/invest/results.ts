@@ -28,8 +28,6 @@ export const HELD_OUT = {
   starSumRocAuc: card.evaluation.baselines.criteria_sum_roc_auc,
   /** Accuracy of answering "pass" to every deck. */
   alwaysPassAccuracy: card.evaluation.baselines.always_pass.accuracy,
-  /** Every deck is tested once per repeat, so this is rows × repeats. */
-  testCalls: cm.pass_pass + cm.pass_invest + cm.invest_pass + cm.invest_invest,
   repeats: 10,
   folds: 5,
 };
@@ -91,10 +89,7 @@ export const FUTURE = {
 };
 
 export const DATA = {
-  reviewed: card.data.raw_rows,
   rows: card.data.rows,
-  invest: card.data.invest,
-  pass: card.data.pass,
   sessions: card.data.sessions,
 };
 
@@ -109,35 +104,6 @@ export const RECIPE = {
   oldestVsNewest: card.training_weights.oldest_vs_newest,
 };
 
-export type Rating =
-  | "valueProposition"
-  | "competitiveAdvantage"
-  | "marketSize"
-  | "technology"
-  | "team"
-  | "socialImpact";
-
-export const RATING_LABELS: Record<Rating, string> = {
-  valueProposition: "Value proposition",
-  competitiveAdvantage: "Competitive advantage",
-  marketSize: "Market size",
-  technology: "Technology",
-  team: "Team",
-  socialImpact: "Social impact",
-};
-
-const oph = card.response.one_point_higher;
-
-/** One star more on a single rating: the average score change and verdict flips. */
-export const ONE_STAR_MORE = (Object.keys(RATING_LABELS) as Rating[])
-  .map((key) => ({
-    key,
-    label: RATING_LABELS[key],
-    points: oph[key].mean_score_change * 100,
-    flippedPer100: oph[key].verdicts_changed * 100,
-  }))
-  .sort((a, b) => b.points - a.points);
-
 /** Share of all decks over the gate if every one had raised this much. */
 export const FUNDING = card.response.funding.map((f) => ({
   usd: f.funding_usd,
@@ -147,49 +113,11 @@ export const FUNDING = card.response.funding.map((f) => ({
 /** Score with all six ratings at 5 and $3M raised (Model Lab funding sweep). */
 export const NEAR_PERFECT_AT_3M = 0.49754;
 
-/*
- * Experiment outputs for the shipped model, from the Model Lab runs (not in the
- * card). Grids are scores on 0–1, rows = value proposition 1→5, columns =
- * competitive advantage 1→5, the other four ratings at their training medians
- * and $500K raised. Aggregates of the model's response, no rows.
- */
-export const VP_X_CA: number[][] = [
-  [0.01423, 0.10779, 0.17297, 0.19268, 0.35991],
-  [0.01423, 0.10779, 0.17297, 0.19268, 0.35991],
-  [0.03957, 0.13313, 0.19832, 0.21802, 0.38525],
-  [0.10927, 0.42125, 0.51593, 0.53563, 0.70286],
-  [0.28937, 0.58456, 0.67924, 0.72453, 0.89176],
-];
-
-/** The same grid partway through training: after the first tree, and the tenth. */
-export const BUILD_UP: { trees: number; grid: number[][] }[] = [
-  {
-    trees: 1,
-    grid: [
-      [0.24663, 0.24663, 0.24663, 0.24663, 0.24663],
-      [0.24663, 0.24663, 0.24663, 0.24663, 0.24663],
-      [0.24663, 0.24663, 0.24663, 0.24663, 0.24663],
-      [0.2547, 0.27528, 0.27528, 0.27528, 0.27528],
-      [0.2547, 0.27528, 0.27528, 0.27528, 0.27528],
-    ],
-  },
-  {
-    trees: 10,
-    grid: [
-      [0.19271, 0.19271, 0.19271, 0.19271, 0.19271],
-      [0.19271, 0.19271, 0.19271, 0.19271, 0.19271],
-      [0.19271, 0.19271, 0.19271, 0.19271, 0.19271],
-      [0.25033, 0.40501, 0.40501, 0.40501, 0.40501],
-      [0.27051, 0.42518, 0.42518, 0.42518, 0.42518],
-    ],
-  },
-  { trees: 100, grid: VP_X_CA },
-];
-
 /**
  * Ranking test by number of meetings trained on: hold out five random
  * meetings, train on k of the rest, repeat 100 times. Adding up the stars,
- * scored on the same held-out meetings, sits flat at 0.752.
+ * scored on the same held-out meetings, sits flat at 0.752. From the Model Lab
+ * runs for the shipped model (not in the card); an aggregate, no rows.
  */
 export const LEARNING = {
   curve: [
