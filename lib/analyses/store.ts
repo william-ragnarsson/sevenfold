@@ -20,7 +20,7 @@ import { runStartedAt } from "@/lib/analyses/status";
 export interface AnalysisSummary {
   /** Primary key, used for deletes. */
   rowId: string;
-  /** The deck hash — what `/dashboard/due-diligence/[id]` is keyed by. */
+  /** The deck hash — what `/dashboard/analyses/[id]` is keyed by. */
   id: string;
   name: string;
   status: AnalysisStatus;
@@ -28,6 +28,8 @@ export interface AnalysisSummary {
   error: string | null;
   /** When the run started (ms), for telling a live run from a dead one — see `lib/analyses/status.ts`. */
   startedAt: number;
+  /** The invest / pass call, once made; null before it, or on a run that never got there. */
+  verdict: AnalysisState["verdict"];
 }
 
 export interface AnalysisRecord extends AnalysisSummary {
@@ -35,7 +37,10 @@ export interface AnalysisRecord extends AnalysisSummary {
   deckPath: string | null;
 }
 
-const SUMMARY_COLUMNS = "id, deck_hash, name, status, created_at, completed_at, error, started_at:state->startedAt";
+// The verdict is a few numbers — cheap to pull out of `state` for the list
+// views, unlike the rest of the report.
+const SUMMARY_COLUMNS =
+  "id, deck_hash, name, status, created_at, completed_at, error, started_at:state->startedAt, verdict:state->verdict";
 
 interface SummaryRow {
   id: string;
@@ -46,6 +51,7 @@ interface SummaryRow {
   completed_at: string | null;
   error: string | null;
   started_at: number | null;
+  verdict: AnalysisState["verdict"] | undefined;
 }
 
 function toSummary(row: SummaryRow): AnalysisSummary {
@@ -57,6 +63,7 @@ function toSummary(row: SummaryRow): AnalysisSummary {
     generatedAt: row.completed_at ?? row.created_at,
     error: row.error,
     startedAt: runStartedAt(row.started_at, row.created_at),
+    verdict: row.verdict ?? null,
   };
 }
 

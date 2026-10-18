@@ -36,6 +36,10 @@ function toSystemInstruction(system: SystemPrompt): string {
  *   gemini-3.5-flash                ok            ok
  *   gemini-3.5-flash-lite           400           ok
  *
+ * Google's model pages list MINIMAL for 3.6 Flash and 3.1 Flash-Lite too (not
+ * yet measured here); 2.5 Flash-Lite takes the budget, like 2.5 Flash. 3.7 and
+ * 3.8 Flash reject MINIMAL, which is why they aren't in KNOWN_MODELS.
+ *
  * So 2.x takes the numeric budget and 3.x takes the level. Note 3.x cannot truly
  * disable thinking — MINIMAL is the floor and Google's docs say it "does not
  * guarantee that thinking is off" — so on a 3.x model some output budget still goes

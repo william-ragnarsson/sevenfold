@@ -1,22 +1,20 @@
-import { emptyForm } from "@/lib/diligence/form-schema";
-import { applyField } from "@/lib/diligence/parse";
-import { foldDeck, type DeckState } from "@/lib/deck";
+import { applyField, emptyForm } from "@/lib/diligence/form-schema";
+import { foldDeck } from "@/features/deck-reader/state";
+import type { DeckState } from "@/features/deck-reader/types";
+import { foldFeedback, initialFeedbackState } from "@/features/feedback/state";
+import type { FeedbackState } from "@/features/feedback/types";
+import { foldLandscape, initialLandscapeState } from "@/features/landscape/state";
+import type { LandscapeState } from "@/features/landscape/types";
+import { foldResearch, initialResearchState } from "@/features/research/state";
+import type { ResearchState } from "@/features/research/types";
+import { initialScorecardState } from "@/features/scorecard/state";
+import type { ScorecardState } from "@/features/scorecard/types";
+import { foldVerdict, initialVerdictState } from "@/features/verdict/state";
+import type { VerdictState } from "@/features/verdict/types";
 import { cacheSavingsOf } from "@/lib/llm/pricing";
-import type {
-  CompetitiveLandscape,
-  DeckFeedbackItem,
-  DiligencePhase,
-  DueDiligenceForm,
-  InvestVerdict,
-  ProgressEvent,
-  Source,
-} from "@/lib/diligence/types";
+import type { DiligencePhase, DueDiligenceForm, ProgressEvent } from "@/lib/diligence/types";
 
-/** One search query and the sources it surfaced. */
-export interface SearchGroup {
-  query: string;
-  sources: Source[];
-}
+export type { SearchGroup } from "@/lib/core/types";
 
 export type StepStatus = "pending" | "active" | "done";
 
@@ -52,7 +50,12 @@ export interface UsageTotals {
   byStage: Record<string, StageUsage>;
 }
 
-export interface AnalysisState {
+/**
+ * The live and saved state of one analysis. Each product keeps its own slice
+ * (the `extends` list) and folds its own events into it; this adds the run's
+ * progress, the form and the cost overlay.
+ */
+export interface AnalysisState extends ResearchState, VerdictState, FeedbackState, LandscapeState, ScorecardState {
   phase: DiligencePhase | "uploading";
   steps: Step[];
   /** The form, mutated live as `field` events arrive. */
@@ -61,33 +64,14 @@ export interface AnalysisState {
   filledCount: number;
   /** Most recently filled key (for a brief highlight). */
   lastKey: string | null;
-  searches: SearchGroup[];
-  sourceCount: number;
-  notes: string;
-  verdict: InvestVerdict | null;
-  deckFeedback: DeckFeedbackItem[];
-  /**
-   * The competitor grid, once mapped. Optional because reports saved before
-   * it existed don't carry it; read it as `state.landscape ?? null`.
-   */
-  landscape?: CompetitiveLandscape | null;
-  /** Why the landscape is missing, when its stage failed. */
-  landscapeError?: string | null;
-  /** The landscape stage's own searches, shown on its card while it works. */
-  landscapeSearches?: SearchGroup[];
   startedAt: number | null;
   error: string | null;
   /** Dev-only cost overlay data; stays null in production (no `usage` events arrive). */
   usage: UsageTotals | null;
   /**
-   * True on every run since the regression model: `form.scorecard.funding` is
-   * whole US dollars and 0 means nothing raised. Reports saved before it lack
-   * the flag; there 0 meant unknown and amounts were in the deck's currency.
-   */
-  fundingInUsd?: true;
-  /**
    * The deck page by page: what was read off each slide and which fields were
-   * cited from it (see `lib/deck`). Absent on reports saved before it existed.
+   * cited from it (see `features/deck-reader`). Absent on reports saved before
+   * it existed.
    */
   deck?: DeckState;
 }
@@ -107,18 +91,14 @@ export function initialState(): AnalysisState {
     form: emptyForm(),
     filledCount: 0,
     lastKey: null,
-    searches: [],
-    sourceCount: 0,
-    notes: "",
-    verdict: null,
-    deckFeedback: [],
-    landscape: null,
-    landscapeError: null,
-    landscapeSearches: [],
+    ...initialResearchState(),
+    ...initialVerdictState(),
+    ...initialFeedbackState(),
+    ...initialLandscapeState(),
     startedAt: Date.now(),
     error: null,
     usage: null,
-    fundingInUsd: true,
+    ...initialScorecardState(),
   };
 }
 
@@ -130,16 +110,6 @@ function advanceSteps(steps: Step[], phase: DiligencePhase): Step[] {
     if (i === target) return { ...step, status: "active" };
     return { ...step, status: "pending" };
   });
-}
-
-/**
- * Files a source under the latest search, or under "Background research" when
- * it came before any search.
- */
-function withSource(searches: SearchGroup[], source: Source): SearchGroup[] {
-  if (searches.length === 0) return [{ query: "Background research", sources: [source] }];
-  const last = searches[searches.length - 1];
-  return [...searches.slice(0, -1), { ...last, sources: [...last.sources, source] }];
 }
 
 export type StreamAction =
@@ -156,6 +126,14 @@ export function streamReducer(state: AnalysisState, action: StreamAction): Analy
   return deck === next.deck ? next : { ...next, deck };
 }
 
+/** Each product's fold; one that doesn't own the event hands the state back untouched. */
+const PRODUCT_FOLDS: ((state: AnalysisState, event: ProgressEvent) => AnalysisState)[] = [
+  foldResearch,
+  foldVerdict,
+  foldFeedback,
+  foldLandscape,
+];
+
 function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState {
   switch (event.type) {
     case "status":
@@ -167,41 +145,6 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
       applyField(form, event.key, event.value, event.source);
       return { ...state, form, filledCount: state.filledCount + 1, lastKey: event.key };
     }
-
-    case "search":
-      return { ...state, searches: [...state.searches, { query: event.query, sources: [] }] };
-
-    case "source": {
-      const searches = withSource(state.searches, { title: event.title, url: event.url });
-      return { ...state, searches, sourceCount: state.sourceCount + 1 };
-    }
-
-    case "note":
-      return { ...state, notes: state.notes + event.text };
-
-    case "verdict":
-      return { ...state, verdict: event.verdict };
-
-    case "feedback":
-      return { ...state, deckFeedback: [...state.deckFeedback, event.item] };
-
-    case "landscape-search":
-      return {
-        ...state,
-        landscapeSearches: [...(state.landscapeSearches ?? []), { query: event.query, sources: [] }],
-      };
-
-    case "landscape-source":
-      return {
-        ...state,
-        landscapeSearches: withSource(state.landscapeSearches ?? [], { title: event.title, url: event.url }),
-      };
-
-    case "landscape":
-      return { ...state, landscape: event.landscape };
-
-    case "landscape-failed":
-      return { ...state, landscapeError: event.message };
 
     case "usage": {
       const prev: UsageTotals = state.usage ?? {
@@ -275,6 +218,7 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
       return { ...state, error: event.message };
 
     default:
-      return state;
+      // Every other event belongs to one product, which folds it into its own slice.
+      return PRODUCT_FOLDS.reduce((next, fold) => fold(next, event), state);
   }
 }

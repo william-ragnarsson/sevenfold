@@ -25,7 +25,7 @@ import {
   type AnalysisSummary,
 } from "@/lib/analyses/store";
 import type { SampleDeck } from "@/lib/samples/airbnb";
-import { pdfFromFile, type PdfSource } from "@/components/features/deck/pdfSource";
+import { pdfFromFile, type PdfSource } from "@/lib/analyses/pdf-source";
 
 const EMPTY_HISTORY: AnalysisSummary[] = [];
 
@@ -202,7 +202,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     async (deck: { file: File } | { sampleId: string }) => {
       if (!configured || isIdentified) return false;
       await stashDeck(deck);
-      router.push(signInPath(ROUTES.dueDiligence));
+      router.push(signInPath(ROUTES.dashboard));
       return true;
     },
     [configured, isIdentified, router],

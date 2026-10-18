@@ -4,7 +4,7 @@
  *
  * Why the text is committed rather than extracted at request time: the source
  * PDF is 29 image-only pages (3.9MB, zero embedded text — `unpdf` returns 0
- * characters), so the normal path in `lib/pdf/extract.ts` would fall through to
+ * characters), so the normal path in `features/deck-reader/pdf/extract.ts` would fall through to
  * the Claude vision-OCR extractor on every single click. That's tens of seconds
  * and real spend on the one control designed to attract the most traffic. With
  * the text pre-extracted, `/api/analyze` skips extraction entirely and the run
@@ -12,7 +12,7 @@
  *
  * Regenerating `deckText`: transcribe `public/sample-decks/airbnb-2008-seed-deck.pdf`
  * with the same instruction the OCR extractor uses (`OCR_INSTRUCTION` in
- * `lib/pdf/extractors/instruction.ts`), then apply the two edits below by hand.
+ * `features/deck-reader/pdf/extractors/instruction.ts`), then apply the two edits below by hand.
  * Keep the `[Slide N]` lines: they carry the PDF's own page numbers, which is
  * what lets the Deck section put each line on the right thumbnail and the model
  * cite the page a field came from.
@@ -30,7 +30,7 @@
  */
 
 export interface SampleDeck {
-  /** Hex SHA-256 of the PDF — the dedupe key and the /dashboard/due-diligence/<id> slug. */
+  /** Hex SHA-256 of the PDF — the dedupe key and the /dashboard/analyses/<id> slug. */
   id: string;
   /** Shown in the prompt, and the report's fallback name. */
   label: string;
@@ -42,7 +42,7 @@ export interface SampleDeck {
 }
 
 export const AIRBNB_SAMPLE: SampleDeck = {
-  // The PDF's real SHA-256, not a made-up slug. `/dashboard/due-diligence/[id]`, the
+  // The PDF's real SHA-256, not a made-up slug. `/dashboard/analyses/[id]`, the
   // `analyses.deck_hash` column and the client's dedupe check all key off the
   // deck hash, so the sample has to carry its actual one — otherwise its report
   // would 404 the moment you reloaded. Recompute with:

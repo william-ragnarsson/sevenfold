@@ -4,7 +4,7 @@ import type { RefObject } from "react";
 import ChaptersNav from "./ChaptersNav";
 import { REPORT_SECTIONS } from "./reportSections";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
-import type { PdfSource } from "@/components/features/deck/pdfSource";
+import type { PdfSource } from "@/lib/analyses/pdf-source";
 
 /**
  * The results layout: a sticky "chapters" nav beside a single column of
@@ -25,7 +25,7 @@ export default function ReportView({
   pdf: PdfSource | null;
   scrollRef: RefObject<HTMLElement | null>;
 }) {
-  const sections = REPORT_SECTIONS.filter((s) => s.available(state, active));
+  const sections = REPORT_SECTIONS.filter((s) => !s.pageOnly && s.available(state, active));
 
   return (
     <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-4 lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-10">

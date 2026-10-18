@@ -7,9 +7,9 @@
  * extraction, error messages, and persistence from here.
  */
 
-import { extractDeck, provideDeck } from "@/lib/pdf/extract";
-import type { DeckSink } from "@/lib/pdf/extract";
-import { createDeckBudget } from "@/lib/deck";
+import { extractDeck, provideDeck } from "@/features/deck-reader/pdf/extract";
+import type { DeckSink } from "@/features/deck-reader/pdf/extract";
+import { createDeckBudget } from "@/features/deck-reader/state";
 import { loadPlaybook } from "@/lib/playbook/load";
 import { getDiligenceEngine } from "@/lib/diligence/engine";
 import { EmptyDeckError } from "@/lib/diligence/types";

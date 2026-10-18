@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/features/auth/AuthProvider";
+import ReportProvider from "@/components/features/analyze/ReportProvider";
 import { useLiveRun } from "@/components/features/analyze/useLiveRun";
 import { ROUTES } from "@/lib/routes";
 import ResumeStashedDeck from "./ResumeStashedDeck";
@@ -18,6 +19,9 @@ import Sidebar from "./Sidebar";
  * sidebar stays put and there is one scrollbar. A page that needs a scroll box
  * of its own (the report, for its chapter scroll-spy) fills `main` with an
  * `h-full overflow-y-auto` box, and then `main` itself never overflows.
+ *
+ * Inside an analysis (`/dashboard/analyses/<id>/…`) the report is loaded once,
+ * here, for both the page and the sidebar's tabs beside it (`ReportProvider`).
  *
  * `proxy.ts` only lets signed-in accounts in, so the pages inside can take
  * one for granted. A sign-out while you're here (the sidebar's button,
@@ -41,15 +45,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const close = useCallback(() => setOpenOn(null), []);
 
   return (
-    <div className="flex h-dvh flex-col lg:flex-row">
-      <ResumeStashedDeck />
-      <aside className="hidden shrink-0 lg:block">
-        <Sidebar />
-      </aside>
-      <MobileBar expanded={drawerOpen} onOpen={() => setOpenOn(pathname)} />
-      <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
-      {drawerOpen && <Drawer onClose={close} />}
-    </div>
+    <ReportProvider>
+      <div className="flex h-dvh flex-col lg:flex-row">
+        <ResumeStashedDeck />
+        <aside className="hidden shrink-0 lg:block">
+          <Sidebar />
+        </aside>
+        <MobileBar expanded={drawerOpen} onOpen={() => setOpenOn(pathname)} />
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>
+        {drawerOpen && <Drawer onClose={close} />}
+      </div>
+    </ReportProvider>
   );
 }
 

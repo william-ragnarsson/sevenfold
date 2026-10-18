@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
-import VerdictPopup from "@/components/features/form/VerdictPopup";
-import DeckFeedbackPanel from "@/components/features/form/DeckFeedbackPanel";
-import ScorecardPanel from "@/components/features/form/ScorecardPanel";
-import { ResearchFindings, WebSearch } from "@/components/features/analyze/ResearchLog";
-import DueDiligenceFormView from "@/components/features/form/DueDiligenceFormView";
-import DeckSection from "@/components/features/deck/DeckSection";
-import LandscapePanel from "@/components/features/landscape/LandscapePanel";
+import VerdictPopup from "@/features/verdict/ui/VerdictPopup";
+import DeckFeedbackPanel from "@/features/feedback/ui/DeckFeedbackPanel";
+import ScorecardPanel from "@/features/scorecard/ui/ScorecardPanel";
+import { ResearchFindings, WebSearch } from "@/features/research/ui/ResearchLog";
+import MemoView, { type FieldRenderer } from "@/features/memo/ui/MemoView";
+import FoundersRows from "@/features/founders/ui/FoundersRows";
+import FoundersPanel from "@/features/founders/ui/FoundersPanel";
+import DeckSection from "@/features/deck-reader/ui/DeckSection";
+import LandscapePanel from "@/features/landscape/ui/LandscapePanel";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
-import type { PdfSource } from "@/components/features/deck/pdfSource";
+import type { PdfSource } from "@/lib/analyses/pdf-source";
 
 /** What a section may need beyond the analysis state. */
 export interface ReportEnv {
@@ -18,8 +20,9 @@ export interface ReportEnv {
 /**
  * The report section registry — the single place that decides what sections the
  * report has, their order, and their labels. It drives both the stacked content
- * column and the chapters nav. Adding a section (e.g. a future checklist) is one
- * entry here plus its component; nothing else needs to change.
+ * column and the chapters nav of the full report, and each product page draws
+ * the sections `productTabs.tsx` lists for it. Adding a section (e.g. a future
+ * checklist) is one entry here plus its component.
  */
 export interface ReportSection {
   /** Anchor id used for scroll-spy + jump links. */
@@ -29,7 +32,14 @@ export interface ReportSection {
   /** Gate a section until it has real data to show, or the run is still active (skeleton). */
   available: (state: AnalysisState, active: boolean) => boolean;
   render: (state: AnalysisState, active: boolean, env: ReportEnv) => ReactNode;
+  /** Only on its product page — the full report already shows it inside another section. */
+  pageOnly?: true;
 }
+
+/** The memo's non-text fields, drawn by the products that own them. */
+const MEMO_RENDERERS: Partial<Record<"founders", FieldRenderer>> = {
+  founders: ({ form, active }) => <FoundersRows form={form} active={active} />,
+};
 
 export const REPORT_SECTIONS: ReportSection[] = [
   {
@@ -46,6 +56,14 @@ export const REPORT_SECTIONS: ReportSection[] = [
     render: (s, active, env) => (
       <DeckSection key={s.startedAt} deck={s.deck} form={s.form} active={active} pdf={env.pdf} />
     ),
+  },
+  {
+    id: "founders",
+    label: "Founders",
+    // The memo's founders rows, on their own; the full report has them in the memo.
+    pageOnly: true,
+    available: () => true,
+    render: (s, active) => <FoundersPanel form={s.form} active={active} />,
   },
   {
     id: "feedback",
@@ -90,6 +108,6 @@ export const REPORT_SECTIONS: ReportSection[] = [
     id: "document",
     label: "Document",
     available: () => true,
-    render: (s, active) => <DueDiligenceFormView form={s.form} active={active} />,
+    render: (s, active) => <MemoView form={s.form} active={active} renderers={MEMO_RENDERERS} />,
   },
 ];

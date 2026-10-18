@@ -110,9 +110,12 @@ export const KNOWN_MODELS = [
   "claude-sonnet-5",
   "claude-sonnet-4-6",
   "claude-haiku-4-5",
+  "gemini-3.6-flash",
   "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
   "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ] as const;
 
 /** Which provider adapter a model id routes to — inferred from its name. */
@@ -153,21 +156,18 @@ function envModel(name: string, fallback: string): string {
 }
 
 /**
- * Per-stage model selection. Gemini across the board — it's faster and cheaper for
- * this pipeline, and the deliberate default now that the project has standardised
- * on it. Claude remains fully supported (see `lib/llm/claude.ts`); pointing any
- * stage at a `claude-*` id routes there with no other change.
- *
- * OCR stays on 2.5 Flash rather than 3.5: it's the most token-heavy stage by far —
- * an entire deck goes in as image data — and 2.5 Flash is 5x cheaper per input
- * token for what is mechanical transcription rather than judgment.
+ * Per-stage model selection. Gemini 3.5 Flash-Lite on every stage: the cheapest
+ * current model that does all of them well enough, at $0.30 / $2.50 per million
+ * tokens in / out. Each stage can be pointed at any KNOWN_MODELS id from .env;
+ * `gemini-3.6-flash` is the step up where a stage's judgment falls short, and a
+ * `claude-*` id routes to Claude (`lib/llm/claude.ts`) with no other change.
  */
-export const getOcrModel = (): string => envModel("OCR_MODEL", "gemini-2.5-flash");
-export const getExtractModel = (): string => envModel("EXTRACT_MODEL", "gemini-3.5-flash");
-export const getResearchModel = (): string => envModel("RESEARCH_MODEL", "gemini-3.5-flash");
-export const getCompleteModel = (): string => envModel("COMPLETE_MODEL", "gemini-3.5-flash");
-export const getScorecardModel = (): string => envModel("SCORECARD_MODEL", "gemini-3.5-flash");
-export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini-3.5-flash");
+export const getOcrModel = (): string => envModel("OCR_MODEL", "gemini-3.5-flash-lite");
+export const getExtractModel = (): string => envModel("EXTRACT_MODEL", "gemini-3.5-flash-lite");
+export const getResearchModel = (): string => envModel("RESEARCH_MODEL", "gemini-3.5-flash-lite");
+export const getCompleteModel = (): string => envModel("COMPLETE_MODEL", "gemini-3.5-flash-lite");
+export const getScorecardModel = (): string => envModel("SCORECARD_MODEL", "gemini-3.5-flash-lite");
+export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini-3.5-flash-lite");
 
 /**
  * The competitive landscape stage, on Gemini like the rest. Its search sources
@@ -177,7 +177,7 @@ export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini
  * URLs. Any KNOWN_MODELS id works, since the stage only talks to the generic
  * provider interface.
  */
-export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "gemini-3.5-flash");
+export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "gemini-3.5-flash-lite");
 
 // ───────────────────────── Numeric knobs ─────────────────────────
 
@@ -203,9 +203,9 @@ function envInt(name: string, fallback: number, min: number, max: number): numbe
  *
  * NOTE: both gate Claude's `web_search` tool only, per call. Gemini's Google
  * Search grounding self-manages and never reads them, so with the default
- * `RESEARCH_MODEL` (Gemini) they cap only the landscape stage (Claude by
- * default). Set `RESEARCH_MODEL=claude-haiku-4-5` if you need a hard ceiling on
- * the most expensive stage too.
+ * Gemini models the search cap is only a request in the landscape prompt and
+ * the continuation cap does nothing. Set `RESEARCH_MODEL=claude-haiku-4-5` if
+ * you need a hard ceiling on the most expensive stage.
  */
 export const getResearchMaxSearches = (): number => envInt("RESEARCH_MAX_SEARCHES", 3, 0, 10);
 export const getResearchMaxContinuations = (): number =>

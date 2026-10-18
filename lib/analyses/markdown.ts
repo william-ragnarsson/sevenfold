@@ -8,7 +8,7 @@
  * away.
  */
 
-import { domainOf } from "@/components/features/analyze/sourceDisplay";
+import { domainOf } from "@/lib/sources";
 import { DD_SECTIONS, SCORECARD_METRIC_KEYS } from "@/lib/diligence/form-schema";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
 import type {
