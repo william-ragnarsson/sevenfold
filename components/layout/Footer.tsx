@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ROUTES } from "@/lib/routes";
 
 const LINKS = [
   { label: "LinkedIn", href: "https://www.linkedin.com/in/william-ragnarsson/" },
@@ -7,9 +8,7 @@ const LINKS = [
 ];
 
 /**
- * Shared site footer — rendered once in app/layout.tsx (so it's on every page)
- * and again at the end of the analysis report's section list, where it also
- * gives the last chapters real trailing content to scroll to.
+ * The public site's footer, rendered by MarketingShell under every page there.
  *
  * `flush` is for pages that end in a full-bleed band. It drops the top margin —
  * which would otherwise leave a strip of bare paper between the band's bottom
@@ -53,10 +52,10 @@ export default function Footer({ flush = false }: { flush?: boolean }) {
               {l.label}
             </a>
           ))}
-          <Link href="/model" className="text-sm font-medium text-muted transition-colors hover:text-ink">
+          <Link href={ROUTES.model} className="text-sm font-medium text-muted transition-colors hover:text-ink">
             How the model works
           </Link>
-          <Link href="/playbook" className="text-sm font-medium text-muted transition-colors hover:text-ink">
+          <Link href={ROUTES.rubric} className="text-sm font-medium text-muted transition-colors hover:text-ink">
             Rubric
           </Link>
           <span className="text-sm text-muted/60">© {new Date().getFullYear()}</span>

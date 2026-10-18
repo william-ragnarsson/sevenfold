@@ -31,6 +31,7 @@ import { deckCharCount, parseSlides } from "@/lib/deck";
 import { OCR_INSTRUCTION } from "@/lib/pdf/extractors/instruction";
 import { createSupabaseClientForToken } from "@/lib/supabase/token";
 import type { AnalysisStatus } from "@/lib/supabase/types";
+import { analysisPath } from "@/lib/routes";
 
 /** Longest a single call waits on a run before handing back an `analysis_id`. */
 const WAIT_MS = 50_000;
@@ -416,7 +417,7 @@ function originOf(ctx: ServerContext): string {
 }
 
 function reportUrl(origin: string, hash: string): string {
-  return `${origin}/due-diligence/${hash}`;
+  return `${origin}${analysisPath(hash)}`;
 }
 
 function textResult(text: string): CallToolResult {

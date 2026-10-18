@@ -3,6 +3,7 @@ import { applyField } from "@/lib/diligence/parse";
 import { foldDeck, type DeckState } from "@/lib/deck";
 import { cacheSavingsOf } from "@/lib/llm/pricing";
 import type {
+  CompetitiveLandscape,
   DeckFeedbackItem,
   DiligencePhase,
   DueDiligenceForm,
@@ -65,6 +66,15 @@ export interface AnalysisState {
   notes: string;
   verdict: InvestVerdict | null;
   deckFeedback: DeckFeedbackItem[];
+  /**
+   * The competitor grid, once mapped. Optional because reports saved before
+   * it existed don't carry it; read it as `state.landscape ?? null`.
+   */
+  landscape?: CompetitiveLandscape | null;
+  /** Why the landscape is missing, when its stage failed. */
+  landscapeError?: string | null;
+  /** The landscape stage's own searches, shown on its card while it works. */
+  landscapeSearches?: SearchGroup[];
   startedAt: number | null;
   error: string | null;
   /** Dev-only cost overlay data; stays null in production (no `usage` events arrive). */
@@ -102,6 +112,9 @@ export function initialState(): AnalysisState {
     notes: "",
     verdict: null,
     deckFeedback: [],
+    landscape: null,
+    landscapeError: null,
+    landscapeSearches: [],
     startedAt: Date.now(),
     error: null,
     usage: null,
@@ -117,6 +130,16 @@ function advanceSteps(steps: Step[], phase: DiligencePhase): Step[] {
     if (i === target) return { ...step, status: "active" };
     return { ...step, status: "pending" };
   });
+}
+
+/**
+ * Files a source under the latest search, or under "Background research" when
+ * it came before any search.
+ */
+function withSource(searches: SearchGroup[], source: Source): SearchGroup[] {
+  if (searches.length === 0) return [{ query: "Background research", sources: [source] }];
+  const last = searches[searches.length - 1];
+  return [...searches.slice(0, -1), { ...last, sources: [...last.sources, source] }];
 }
 
 export type StreamAction =
@@ -149,14 +172,7 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
       return { ...state, searches: [...state.searches, { query: event.query, sources: [] }] };
 
     case "source": {
-      const source: Source = { title: event.title, url: event.url };
-      const searches = [...state.searches];
-      if (searches.length === 0) {
-        searches.push({ query: "Background research", sources: [source] });
-      } else {
-        const last = searches[searches.length - 1];
-        searches[searches.length - 1] = { ...last, sources: [...last.sources, source] };
-      }
+      const searches = withSource(state.searches, { title: event.title, url: event.url });
       return { ...state, searches, sourceCount: state.sourceCount + 1 };
     }
 
@@ -168,6 +184,24 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
 
     case "feedback":
       return { ...state, deckFeedback: [...state.deckFeedback, event.item] };
+
+    case "landscape-search":
+      return {
+        ...state,
+        landscapeSearches: [...(state.landscapeSearches ?? []), { query: event.query, sources: [] }],
+      };
+
+    case "landscape-source":
+      return {
+        ...state,
+        landscapeSearches: withSource(state.landscapeSearches ?? [], { title: event.title, url: event.url }),
+      };
+
+    case "landscape":
+      return { ...state, landscape: event.landscape };
+
+    case "landscape-failed":
+      return { ...state, landscapeError: event.message };
 
     case "usage": {
       const prev: UsageTotals = state.usage ?? {
@@ -232,6 +266,7 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
         form: event.report,
         verdict: event.report.verdict ?? state.verdict,
         deckFeedback: event.report.deckFeedback ?? state.deckFeedback,
+        landscape: event.report.landscape ?? state.landscape ?? null,
         phase: "done",
         steps: advanceSteps(state.steps, "done"),
       };

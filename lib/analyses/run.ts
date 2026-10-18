@@ -130,6 +130,15 @@ export function logEvent(tag: string, event: ProgressEvent): void {
     // High-frequency note deltas — don't log each one server-side.
   } else if (event.type === "feedback") {
     console.log(`${tag} 📝 feedback:`, event.item.severity, "—", event.item.title);
+  } else if (event.type === "landscape-search") {
+    console.log(`${tag} 🗺 landscape search:`, event.query);
+  } else if (event.type === "landscape-source") {
+    // One per cited page — the search lines above already show progress.
+  } else if (event.type === "landscape") {
+    const { xAxis, yAxis, companies } = event.landscape;
+    console.log(`${tag} 🗺 landscape: ${companies.length} companies on ${xAxis.label} × ${yAxis.label}`);
+  } else if (event.type === "landscape-failed") {
+    console.log(`${tag} 🗺 landscape failed:`, event.message);
   } else if (event.type === "usage") {
     console.log(`${tag} 💰 usage: ${event.stage} $${event.costUsd.toFixed(4)}`);
   } else if (event.type === "deck") {

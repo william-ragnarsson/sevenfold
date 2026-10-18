@@ -10,6 +10,9 @@
   --accent: #1a6b3f;
   --accent-bright: #34d17a;
   --marker: #d6f56b;
+  /* Text on the dashboard's dark sidebar: links, then labels and captions. */
+  --on-ink: #c9c5ba;
+  --on-ink-muted: #8f8b80;
 }
 
 @theme inline {
@@ -21,6 +24,8 @@
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
   --color-marker: var(--marker);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
   --font-sans: var(--font-geist-sans);
   --font-serif: var(--font-instrument-serif);
   --font-mono: var(--font-geist-mono);
@@ -57,6 +62,13 @@ html, body {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .pop-in { animation: pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* The dashboard sidebar sliding in as a drawer on phones and tablets */
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.drawer-in { animation: drawer-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -212,6 +224,7 @@ html, body {
   .marker,
   .fade-up,
   .pop-in,
+  .drawer-in,
   .fade-in,
   .word-in,
   .hero-float,

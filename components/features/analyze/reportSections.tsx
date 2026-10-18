@@ -5,8 +5,15 @@ import ScorecardPanel from "@/components/features/form/ScorecardPanel";
 import { ResearchFindings, WebSearch } from "@/components/features/analyze/ResearchLog";
 import DueDiligenceFormView from "@/components/features/form/DueDiligenceFormView";
 import DeckSection from "@/components/features/deck/DeckSection";
+import LandscapePanel from "@/components/features/landscape/LandscapePanel";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
 import type { PdfSource } from "@/components/features/deck/pdfSource";
+
+/** What a section may need beyond the analysis state. */
+export interface ReportEnv {
+  /** The deck's PDF, for slide images. */
+  pdf: PdfSource | null;
+}
 
 /**
  * The report section registry — the single place that decides what sections the
@@ -14,12 +21,6 @@ import type { PdfSource } from "@/components/features/deck/pdfSource";
  * column and the chapters nav. Adding a section (e.g. a future checklist) is one
  * entry here plus its component; nothing else needs to change.
  */
-/** What a section may need beyond the analysis state. */
-export interface ReportEnv {
-  /** The deck's PDF, for slide images. */
-  pdf: PdfSource | null;
-}
-
 export interface ReportSection {
   /** Anchor id used for scroll-spy + jump links. */
   id: string;
@@ -57,6 +58,21 @@ export const REPORT_SECTIONS: ReportSection[] = [
     label: "Scorecard",
     available: () => true,
     render: (s, active) => <ScorecardPanel form={s.form} active={active} legacyFunding={!s.fundingInUsd} />,
+  },
+  {
+    id: "landscape",
+    label: "Competitive Landscape",
+    // Reports saved before this section have no `landscape` at all. A failed
+    // stage stays visible and says why, rather than vanishing when the run ends.
+    available: (s, active) => active || !!s.landscape || !!s.landscapeError,
+    render: (s, active) => (
+      <LandscapePanel
+        landscape={s.landscape ?? null}
+        error={s.landscapeError ?? null}
+        searches={s.landscapeSearches ?? []}
+        active={active}
+      />
+    ),
   },
   {
     id: "findings",

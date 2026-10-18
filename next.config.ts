@@ -36,6 +36,20 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // The pages moved into the dashboard (`lib/routes.ts`). Report links the MCP
+  // server already handed out, emailed links and bookmarks still use the old
+  // paths. Temporary (307) rather than permanent, so browsers don't cache them
+  // and the move stays reversible. `:path*` matches the bare path too, and the
+  // query string carries over, so an emailed link keeps its `next=`.
+  async redirects() {
+    return [
+      { source: "/due-diligence/:path*", destination: "/dashboard/due-diligence/:path*", permanent: false },
+      { source: "/model", destination: "/dashboard/model", permanent: false },
+      { source: "/playbook", destination: "/dashboard/rubric", permanent: false },
+      { source: "/account/:path*", destination: "/dashboard/account/:path*", permanent: false },
+    ];
+  },
+
   async rewrites() {
     return [
       // The metadata URL the MCP server's 401 points at (RFC 9728's

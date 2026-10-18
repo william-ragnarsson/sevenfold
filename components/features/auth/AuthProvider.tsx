@@ -13,6 +13,7 @@ import { AuthError, type User } from "@supabase/supabase-js";
 import { tryGetSupabaseBrowserClient } from "@/lib/supabase/client";
 import { ACCOUNT_EXISTS, describeAuthError, NEEDS_FRESH_LOGIN } from "./authErrors";
 import { isAuthProviderId, type AuthProviderId } from "./providers";
+import { ROUTES } from "@/lib/routes";
 
 /**
  * Where the id of an anonymous user is parked while the browser is away at an
@@ -333,7 +334,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
       // Supabase answers the same whether or not the address has an account,
       // so this can't be used to find out who's signed up.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: callbackUrl("/account/password", "recovery"),
+        redirectTo: callbackUrl(ROUTES.password, "recovery"),
       });
       return resetError ? failed(resetError) : { status: "check-email" };
     },

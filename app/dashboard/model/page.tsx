@@ -19,16 +19,16 @@ import {
   pct,
 } from "@/lib/invest/results";
 import { MEDIAN_RATINGS, TRAINING_FRAMES } from "@/lib/invest/training-frames";
+import { ROUTES } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "How the model works · SevenFold",
   description:
     "How accurate SevenFold's invest-or-pass model is, what it looks for in a deck, and how it was trained and tested on real VC decisions.",
-  alternates: { canonical: "/model" },
 };
 
 /**
- * The public explainer for the invest model, written for founders rather than
+ * The dashboard's explainer for the invest model, written for founders rather than
  * data scientists: results first (how often it agrees with me), then what
  * moves the score, then how it learned, closing with a note that all of it is
  * simplified. Each chart carries one plain sentence; the proper names live in
@@ -69,11 +69,8 @@ const HEADLINE = [
 
 export default function ModelPage() {
   return (
-    <div className="mx-auto max-w-5xl space-y-16 px-6 sm:space-y-24">
+    <div className="mx-auto max-w-5xl space-y-16 px-6 pb-24 sm:space-y-24">
       <header className="space-y-5 pt-10 sm:pt-14">
-        <Link href="/" className="block w-fit text-sm text-muted transition-colors hover:text-ink">
-          ← Back
-        </Link>
         <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-paper/60 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-accent backdrop-blur">
           The model
         </div>
@@ -239,7 +236,7 @@ export default function ModelPage() {
 
       <div>
         <Link
-          href="/"
+          href={ROUTES.dueDiligence}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 font-semibold text-paper transition-colors hover:bg-accent"
         >
           Analyze your deck →
