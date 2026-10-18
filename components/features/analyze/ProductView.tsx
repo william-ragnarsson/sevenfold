@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import ReportView from "./ReportView";
-import { REPORT_SECTIONS } from "./reportSections";
+import { REPORT_SECTIONS, type ReportEnv } from "./reportSections";
 import { useAnalysisScroll } from "./AnalysisFrame";
 import { useReport } from "./ReportProvider";
 import { PRODUCT_TABS, tabAbsent, tabStatus } from "./productTabs";
-import { analysisPath } from "@/lib/routes";
+import { analysisPath, deckSlidePath } from "@/lib/routes";
 import { productPage, type ProductSlug } from "@/lib/products";
 
 /**
@@ -14,16 +14,24 @@ import { productPage, type ProductSlug } from "@/lib/products";
  * lists for it, stacked. The "report" page is the whole report with its
  * chapters nav.
  */
-export default function ProductView({ slug }: { slug: ProductSlug }) {
+export default function ProductView({
+  slug,
+  slide = null,
+}: {
+  slug: ProductSlug;
+  /** The slide the url asks for (`?slide=4`), for the Deck section. */
+  slide?: number | null;
+}) {
   const report = useReport();
   const scrollRef = useAnalysisScroll();
   // The frame shows the loading and missing states.
   if (!report?.state) return null;
   const { id, state, active, pdf, failure } = report;
   const tab = PRODUCT_TABS[slug];
+  const env: ReportEnv = { pdf, slide, slideHref: (n) => deckSlidePath(id, n) };
 
   if (tab.sections === "all") {
-    return <ReportView state={state} active={active} pdf={pdf} scrollRef={scrollRef} />;
+    return <ReportView state={state} active={active} env={env} scrollRef={scrollRef} />;
   }
 
   const page = productPage(slug);
@@ -43,7 +51,7 @@ export default function ProductView({ slug }: { slug: ProductSlug }) {
         <div className="space-y-8">
           {sections.map((s) => (
             <section key={s.id} id={s.id} className="scroll-mt-24">
-              {s.render(state, active, { pdf })}
+              {s.render(state, active, env)}
             </section>
           ))}
         </div>

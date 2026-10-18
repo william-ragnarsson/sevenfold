@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { SEVERITY_META, SEVERITY_ORDER } from "./severityMeta";
 import type { DeckFeedbackItem } from "@/lib/diligence/types";
@@ -10,7 +11,34 @@ import type { DeckFeedbackItem } from "@/lib/diligence/types";
  * verdict banner since it's a headline output, not part of the DD document.
  */
 
-function FeedbackCard({ item }: { item: DeckFeedbackItem }) {
+/** Where a slide opens, or null when it can't be shown. Filled by the report, which knows the Deck page. */
+export type SlideHref = (slide: number) => string | null;
+
+/** The slides an item is about, each a chip that opens it on the Deck page. */
+function SlideChips({ slides, slideHref }: { slides: number[]; slideHref: SlideHref }) {
+  const links = slides.flatMap((slide) => {
+    const href = slideHref(slide);
+    return href ? [{ slide, href }] : [];
+  });
+  if (links.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {links.map(({ slide, href }) => (
+        <Link
+          key={slide}
+          href={href}
+          aria-label={`Open slide ${slide} on the Deck page`}
+          className="inline-flex items-center gap-1 rounded-full border border-ink/15 bg-white/60 px-2 py-0.5 text-[11px] font-medium tabular-nums text-ink/60 transition-colors hover:border-accent/40 hover:text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        >
+          <span aria-hidden className="h-2 w-3 rounded-[2px] border border-current opacity-70" />
+          Slide {slide}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function FeedbackCard({ item, slideHref }: { item: DeckFeedbackItem; slideHref?: SlideHref }) {
   const meta = SEVERITY_META[item.severity];
   return (
     <div className="cell-pop rounded-xl border border-ink/10 bg-white/50 p-3">
@@ -24,6 +52,7 @@ function FeedbackCard({ item }: { item: DeckFeedbackItem }) {
             </span>
           </div>
           {item.detail && <p className="mt-1 text-sm leading-relaxed text-ink/70">{item.detail}</p>}
+          {item.slides && slideHref && <SlideChips slides={item.slides} slideHref={slideHref} />}
         </div>
       </div>
     </div>
@@ -41,9 +70,12 @@ function Skeleton() {
 export default function DeckFeedbackPanel({
   items,
   active = false,
+  slideHref,
 }: {
   items: DeckFeedbackItem[];
   active?: boolean;
+  /** Links an item's slides to the Deck page. Without it, items show no slides. */
+  slideHref?: SlideHref;
 }) {
   if (items.length === 0 && !active) return null;
 
@@ -67,7 +99,7 @@ export default function DeckFeedbackPanel({
               </p>
               <div className="space-y-2">
                 {g.items.map((item, i) => (
-                  <FeedbackCard key={`${g.severity}-${i}`} item={item} />
+                  <FeedbackCard key={`${g.severity}-${i}`} item={item} slideHref={slideHref} />
                 ))}
               </div>
             </div>
