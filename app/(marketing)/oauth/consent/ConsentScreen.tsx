@@ -13,6 +13,7 @@ import {
   type FormNotice,
 } from "@/components/features/auth/AuthFormParts";
 import SignInCard from "@/components/features/auth/SignInCard";
+import { ROUTES } from "@/lib/routes";
 import { decideAuthorization, loadAuthorization, type AuthorizationRequest } from "./actions";
 
 /**
@@ -161,7 +162,7 @@ function Problem({ message }: { message: string }) {
       <h1 className="mt-5 text-xl font-semibold tracking-tight text-ink">Couldn&apos;t connect</h1>
       <p className="mt-1.5 break-words text-sm leading-relaxed text-muted">{message}</p>
       <p className="mt-5 text-center text-sm">
-        <Link href="/" className={TEXT_BUTTON}>
+        <Link href={ROUTES.home} className={TEXT_BUTTON}>
           Go to SevenFold
         </Link>
       </p>

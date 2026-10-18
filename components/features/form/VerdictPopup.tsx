@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { InvestVerdict } from "@/lib/diligence/types";
 import { formatGauge } from "@/lib/invest/gauge";
+import { ROUTES } from "@/lib/routes";
 
 /**
  * How close to the gate (on the 0–1 score) counts as borderline. On decks held
@@ -140,7 +141,7 @@ export default function VerdictPopup({
           <p className="mt-0.5 text-xs text-muted">
             Trained on 800+ pitch decks ·{" "}
             <Link
-              href="/playbook"
+              href={ROUTES.rubric}
               className="font-medium text-ink underline decoration-marker decoration-2 underline-offset-2 transition-colors hover:decoration-accent"
             >
               the rubric

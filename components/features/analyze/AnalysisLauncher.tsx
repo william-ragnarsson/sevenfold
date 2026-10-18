@@ -33,12 +33,13 @@ const TONES = {
  * The sample sticker is part of this component rather than an opt-in prop: every
  * dropzone on the site is a place where someone can discover they have no PDF to
  * hand, so every dropzone needs the same way out. It was a `sample` flag at
- * first, and it immediately drifted — /due-diligence had it and the closing CTA
+ * first, and it immediately drifted — due diligence had it and the closing CTA
  * on the home page didn't, for no reason anyone chose.
  *
  * Rendered in the hero card (dark, compact), the home page's closing CTA (light,
- * elevated) and on /due-diligence (light); it reads everything it needs from the
- * analysis context, so the call sites stay in sync without prop drilling.
+ * elevated) and on /dashboard/due-diligence (light); it reads everything it
+ * needs from the analysis context, so the call sites stay in sync without prop
+ * drilling.
  */
 export default function AnalysisLauncher({
   tone = "light",

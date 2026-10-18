@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
-import LayoutShell from "@/components/layout/LayoutShell";
 import AnalysisProvider from "@/components/features/analyze/AnalysisProvider";
 import AuthProvider from "@/components/features/auth/AuthProvider";
 import "./globals.css";
@@ -48,12 +47,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Auth wraps analysis: starting a run needs a user, so AnalysisProvider
             consumes useAuth(). This layout stays a static server component —
             the session is read client-side, which keeps the landing page
-            statically rendered. Nothing here is gated, so there's no need to
-            know who the user is before the first paint. */}
+            statically rendered; the dashboard's gate is `proxy.ts`.
+
+            Both providers sit here, above the two shells — the public site's
+            (`app/(marketing)/layout.tsx`) and the dashboard's
+            (`app/dashboard/layout.tsx`) — so a run started on the landing page
+            keeps going when it moves into the dashboard. */}
         <AuthProvider>
-          <AnalysisProvider>
-            <LayoutShell>{children}</LayoutShell>
-          </AnalysisProvider>
+          <AnalysisProvider>{children}</AnalysisProvider>
         </AuthProvider>
       </body>
     </html>

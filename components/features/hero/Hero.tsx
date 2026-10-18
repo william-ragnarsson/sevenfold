@@ -3,18 +3,19 @@ import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
 import HeroReportMock from "@/components/features/hero/HeroReportMock";
 import RotatingWord from "@/components/features/hero/RotatingWord";
 import { HELD_OUT, pct } from "@/lib/invest/results";
+import { ROUTES } from "@/lib/routes";
 
-// The model stat links on to /model: it's the one claim here a visitor will
+// The model stat links on to the model page: it's the one claim here a visitor will
 // want proof of, and the accuracy figure is the hook.
 const stats: { value: string; label: string; href?: string }[] = [
   { value: "800+ pitch decks", label: "The training set behind the model" },
   {
     value: "Custom-trained AI",
     label: `Matches real VC calls ${pct(HELD_OUT.accuracy)} of the time →`,
-    href: "/model",
+    href: ROUTES.model,
   },
   { value: "Every claim sourced", label: "Tagged deck, web, or inference" },
-  { value: "Free, no sign-up", label: "No account, no card, no catch" },
+  { value: "Free account", label: "Sign up in seconds, no card needed" },
 ];
 
 /** The words that cycle through the headline — each one is something the engine scores. */

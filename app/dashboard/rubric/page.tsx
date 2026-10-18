@@ -1,17 +1,20 @@
 import fs from "fs";
 import path from "path";
 import Link from "next/link";
+import { ROUTES } from "@/lib/routes";
 
-type Block = { type: "h2" | "h3" | "p" | "li" | "quote"; text: string };
+/** `n` numbers the sections (`h2`s), counted here rather than while rendering. */
+type Block = { type: "h2" | "h3" | "p" | "li" | "quote"; text: string; n?: number };
 
 function parse(md: string): Block[] {
   const blocks: Block[] = [];
+  let section = 0;
   for (const raw of md.split("\n")) {
     const line = raw.trim();
     if (!line || line === "---" || line.startsWith("# ")) continue;
     if (line.startsWith("> ")) blocks.push({ type: "quote", text: line.slice(2) });
     else if (line.startsWith("### ")) blocks.push({ type: "h3", text: line.slice(4) });
-    else if (line.startsWith("## ")) blocks.push({ type: "h2", text: line.slice(3).replace(/^\d+\.\s*/, "") });
+    else if (line.startsWith("## ")) blocks.push({ type: "h2", text: line.slice(3).replace(/^\d+\.\s*/, ""), n: ++section });
     else if (line.startsWith("- ")) blocks.push({ type: "li", text: line.slice(2) });
     else blocks.push({ type: "p", text: line });
   }
@@ -28,15 +31,13 @@ function inline(text: string) {
   });
 }
 
-export default function PlaybookPage() {
+export default function RubricPage() {
   const md = fs.readFileSync(path.join(process.cwd(), "docs/playbook.md"), "utf8");
   const blocks = parse(md);
-  let sectionNo = 0;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-10 px-6">
+    <div className="mx-auto max-w-3xl space-y-10 px-6 pb-24">
       <header className="pt-10 sm:pt-14 space-y-5">
-        <Link href="/" className="text-sm text-muted hover:text-ink transition-colors">← Back</Link>
         <div className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-paper/60 backdrop-blur px-3 py-1 text-xs font-medium text-accent uppercase tracking-[0.2em]">
           Rubric
         </div>
@@ -58,11 +59,9 @@ export default function PlaybookPage() {
               </p>
             );
           if (b.type === "h2") {
-            sectionNo += 1;
-            const n = sectionNo;
             return (
               <h2 key={i} className="flex items-center gap-3 pt-10 text-2xl font-bold tracking-tight text-ink">
-                <span className="grid place-items-center w-8 h-8 rounded-xl bg-ink text-paper text-sm font-bold shrink-0">{n}</span>
+                <span className="grid place-items-center w-8 h-8 rounded-xl bg-ink text-paper text-sm font-bold shrink-0">{b.n}</span>
                 {b.text}
               </h2>
             );
@@ -82,7 +81,7 @@ export default function PlaybookPage() {
 
       <div className="pt-8">
         <Link
-          href="/"
+          href={ROUTES.dueDiligence}
           className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-ink text-paper font-semibold hover:bg-accent transition-colors"
         >
           Analyze your deck →

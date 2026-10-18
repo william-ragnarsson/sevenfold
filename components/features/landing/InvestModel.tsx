@@ -1,6 +1,7 @@
 import Link from "next/link";
 import DealLog from "@/components/features/landing/DealLog";
 import { DATA, HELD_OUT, pct } from "@/lib/invest/results";
+import { ROUTES } from "@/lib/routes";
 
 /**
  * The credibility section, and the first thing under the hero: where the
@@ -63,7 +64,7 @@ export default function InvestModel() {
           </dl>
 
           <Link
-            href="/model"
+            href={ROUTES.model}
             className="mt-8 inline-flex items-center gap-2 rounded-full border border-ink/15 bg-white/50 px-5 py-2.5 text-sm font-semibold text-ink transition-colors hover:border-accent/40 hover:text-accent"
           >
             See how it was trained and tested →

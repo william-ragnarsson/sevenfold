@@ -20,7 +20,7 @@ import { runStartedAt } from "@/lib/analyses/status";
 export interface AnalysisSummary {
   /** Primary key, used for deletes. */
   rowId: string;
-  /** The deck hash — what `/due-diligence/[id]` is keyed by. */
+  /** The deck hash — what `/dashboard/due-diligence/[id]` is keyed by. */
   id: string;
   name: string;
   status: AnalysisStatus;
