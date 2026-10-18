@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import VerdictPopup from "@/features/verdict/ui/VerdictPopup";
-import DeckFeedbackPanel from "@/features/feedback/ui/DeckFeedbackPanel";
+import DeckFeedbackPanel, { type SlideHref } from "@/features/feedback/ui/DeckFeedbackPanel";
 import ScorecardPanel from "@/features/scorecard/ui/ScorecardPanel";
 import { ResearchFindings, WebSearch } from "@/features/research/ui/ResearchLog";
 import MemoView, { type FieldRenderer } from "@/features/memo/ui/MemoView";
 import FoundersRows from "@/features/founders/ui/FoundersRows";
 import FoundersPanel from "@/features/founders/ui/FoundersPanel";
 import DeckSection from "@/features/deck-reader/ui/DeckSection";
+import { deckTotal, isUnmapped } from "@/features/deck-reader/ui/selectors";
 import LandscapePanel from "@/features/landscape/ui/LandscapePanel";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
@@ -15,6 +16,10 @@ import type { PdfSource } from "@/lib/analyses/pdf-source";
 export interface ReportEnv {
   /** The deck's PDF, for slide images. */
   pdf: PdfSource | null;
+  /** The slide the url asks the Deck section to open (`?slide=4`), if any. */
+  slide: number | null;
+  /** A link to one slide on this analysis's Deck page. */
+  slideHref: (slide: number) => string;
 }
 
 /**
@@ -36,6 +41,18 @@ export interface ReportSection {
   pageOnly?: true;
 }
 
+/**
+ * Links feedback items to the Deck page, for the slides it can show: none when
+ * the deck wasn't split into pages (or the report predates the deck slice), and
+ * none past its last page.
+ */
+function feedbackSlideHref(state: AnalysisState, env: ReportEnv): SlideHref | undefined {
+  const deck = state.deck;
+  if (!deck || isUnmapped(deck)) return undefined;
+  const total = deckTotal(deck);
+  return (slide) => (slide <= total ? env.slideHref(slide) : null);
+}
+
 /** The memo's non-text fields, drawn by the products that own them. */
 const MEMO_RENDERERS: Partial<Record<"founders", FieldRenderer>> = {
   founders: ({ form, active }) => <FoundersRows form={form} active={active} />,
@@ -54,7 +71,14 @@ export const REPORT_SECTIONS: ReportSection[] = [
     // Reports saved before per-slide reading existed have no deck slice.
     available: (s, active) => active || !!s.deck,
     render: (s, active, env) => (
-      <DeckSection key={s.startedAt} deck={s.deck} form={s.form} active={active} pdf={env.pdf} />
+      <DeckSection
+        key={s.startedAt}
+        deck={s.deck}
+        form={s.form}
+        active={active}
+        pdf={env.pdf}
+        openSlide={env.slide}
+      />
     ),
   },
   {
@@ -69,7 +93,9 @@ export const REPORT_SECTIONS: ReportSection[] = [
     id: "feedback",
     label: "Deck feedback",
     available: (s, active) => active || s.deckFeedback.length > 0,
-    render: (s, active) => <DeckFeedbackPanel items={s.deckFeedback} active={active} />,
+    render: (s, active, env) => (
+      <DeckFeedbackPanel items={s.deckFeedback} active={active} slideHref={feedbackSlideHref(s, env)} />
+    ),
   },
   {
     id: "scorecard",

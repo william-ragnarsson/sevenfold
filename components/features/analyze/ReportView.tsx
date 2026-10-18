@@ -2,9 +2,8 @@
 
 import type { RefObject } from "react";
 import ChaptersNav from "./ChaptersNav";
-import { REPORT_SECTIONS } from "./reportSections";
+import { REPORT_SECTIONS, type ReportEnv } from "./reportSections";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
-import type { PdfSource } from "@/lib/analyses/pdf-source";
 
 /**
  * The results layout: a sticky "chapters" nav beside a single column of
@@ -16,13 +15,13 @@ import type { PdfSource } from "@/lib/analyses/pdf-source";
 export default function ReportView({
   state,
   active,
-  pdf,
+  env,
   scrollRef,
 }: {
   state: AnalysisState;
   active: boolean;
-  /** The deck's PDF, for slide images; null when there isn't one to show. */
-  pdf: PdfSource | null;
+  /** The deck's PDF, slide links and the like; see `ReportEnv`. */
+  env: ReportEnv;
   scrollRef: RefObject<HTMLElement | null>;
 }) {
   const sections = REPORT_SECTIONS.filter((s) => !s.pageOnly && s.available(state, active));
@@ -33,7 +32,7 @@ export default function ReportView({
       <div className="min-w-0 space-y-8">
         {sections.map((s) => (
           <section key={s.id} id={s.id} className="scroll-mt-24">
-            {s.render(state, active, { pdf })}
+            {s.render(state, active, env)}
           </section>
         ))}
       </div>

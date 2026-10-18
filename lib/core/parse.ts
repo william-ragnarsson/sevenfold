@@ -49,15 +49,16 @@ export function parseFieldLine(line: string): ParsedField | null {
   }
 }
 
-/** Most pages one field may cite; more than this is the model listing the whole deck. */
+/** Most pages one line may cite; more than this is the model listing the whole deck. */
 const MAX_CITED_SLIDES = 6;
 
 /**
- * The `slides` a field line cites, as sorted, distinct page numbers. Accepts a
- * bare number too. Anything that isn't a whole page number is dropped; pages
- * past the end of the deck are clamped later, when the PDF's length is known.
+ * The `slides` a model line cites (a field, a feedback item), as sorted,
+ * distinct page numbers. Accepts a bare number too. Anything that isn't a whole
+ * page number is dropped; pages past the end of the deck are clamped later,
+ * when the PDF's length is known.
  */
-function parseSlideNumbers(raw: unknown): number[] | undefined {
+export function parseSlideNumbers(raw: unknown): number[] | undefined {
   const list = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
   const pages = new Set<number>();
   for (const item of list) {

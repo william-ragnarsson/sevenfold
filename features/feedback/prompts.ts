@@ -41,9 +41,10 @@ Use the research notes to sharpen critical/warning items whenever they reveal so
 
 ## Output format - STRICT
 Output ONLY a sequence of JSON objects, ONE PER LINE (NDJSON). No prose, no markdown fences, no surrounding array — just one JSON object per line. Each line must be:
-{"severity": "<critical|warning|strength>", "category": "<short category, e.g. Team, Competition, Market, Deck Basics>", "title": "<short label, under 8 words>", "detail": "<1-2 sentences of explanation>"}
+{"severity": "<critical|warning|strength>", "category": "<short category, e.g. Team, Competition, Market, Deck Basics>", "title": "<short label, under 8 words>", "detail": "<1-2 sentences of explanation>", "slides": [<slide number>, ...]}
 Rules:
 - Emit 5-10 items total, mixing severities - do not emit only critical items.
+- "slides": when the deck text has [Slide N] lines and an item is about what specific slides show or claim, list the 1-3 slide numbers it is about, e.g. {"severity": "warning", "category": "Traction", "title": "Traction has no numbers", "detail": "...", "slides": [6]}. Only cite numbers that appear as [Slide N] lines. Leave "slides" out for an item about the deck as a whole, about something the deck is missing entirely, or when the deck has no [Slide N] lines. Put slide numbers only in "slides", never in the title or detail.
 - Be specific to THIS deck. Do not fabricate facts; ground every item in the deck text or research notes.
 - Do NOT use em-dashes (—) or en-dashes (–) in any of the fields (title, detail, category); use a regular hyphen (-) instead.
 - Output nothing except the JSON lines.`,

@@ -77,6 +77,22 @@ export function analysisPath(id: string, product?: string): string {
   return product ? `${base}/${product}` : base;
 }
 
+/** The query parameter that opens the Deck page at one slide: `…/deck?slide=4`. */
+export const SLIDE_PARAM = "slide";
+
+/** An analysis's Deck page, opened at `slide` (a 1-based PDF page). */
+export function deckSlidePath(id: string, slide: number): string {
+  return `${analysisPath(id, "deck")}?${new URLSearchParams({ [SLIDE_PARAM]: String(slide) })}`;
+}
+
+/** The slide a `?slide=` value asks for, or null when it isn't a page number. */
+export function slideFromParam(value: string | string[] | null | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || !/^\d{1,4}$/.test(raw)) return null;
+  const slide = Number(raw);
+  return slide >= 1 ? slide : null;
+}
+
 /** The analysis `pathname` is inside (its overview or any of its pages), or null. */
 export function analysisIdOf(pathname: string): string | null {
   const segment = pathname.startsWith(`${ROUTES.analyses}/`)

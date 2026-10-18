@@ -63,11 +63,14 @@ export default function DeckSection({
   form,
   active,
   pdf,
+  openSlide = null,
 }: {
   deck: DeckState | undefined;
   form: DueDiligenceForm;
   active: boolean;
   pdf: PdfSource | null;
+  /** A slide to open, as if picked: a link's `?slide=4`, e.g. from a feedback item. */
+  openSlide?: number | null;
 }) {
   const reducedMotion = useReducedMotion();
   const animate = active && !reducedMotion;
@@ -91,7 +94,13 @@ export default function DeckSection({
   // Where the run is: the page being read, then the latest find.
   const live = total === 0 ? null : scanning ? Math.min(cursor + 1, total) : (stop?.slide ?? Math.max(1, Math.min(cursor, total)));
 
-  const [picked, setPicked] = useState<number | null>(null);
+  const [picked, setPicked] = useState<number | null>(openSlide);
+  // A different slide asked for while mounted (back and forward between links) opens too.
+  const [opened, setOpened] = useState(openSlide);
+  if (openSlide !== opened) {
+    setOpened(openSlide);
+    if (openSlide !== null) setPicked(openSlide);
+  }
   const following = active && picked === null;
   // Where following left the reel, so it doesn't jump once the run ends.
   const [rest, setRest] = useState<number | null>(null);

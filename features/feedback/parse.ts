@@ -1,4 +1,4 @@
-import { cleanDashes } from "@/lib/core/parse";
+import { cleanDashes, parseSlideNumbers } from "@/lib/core/parse";
 import type { DeckFeedbackItem, DeckFeedbackSeverity } from "./types";
 
 const VALID_SEVERITIES = new Set<DeckFeedbackSeverity>(["critical", "warning", "strength"]);
@@ -13,12 +13,16 @@ export function parseFeedbackLine(line: string): DeckFeedbackItem | null {
       ? (obj.severity as DeckFeedbackSeverity)
       : null;
     if (!severity || typeof obj.title !== "string" || !obj.title) return null;
-    return {
+    const item: DeckFeedbackItem = {
       severity,
       category: cleanDashes(typeof obj.category === "string" ? obj.category : "General"),
       title: cleanDashes(obj.title),
       detail: cleanDashes(typeof obj.detail === "string" ? obj.detail : ""),
     };
+    // Only set when cited, so an item without slides is saved exactly as before.
+    const slides = parseSlideNumbers(obj.slides);
+    if (slides) item.slides = slides;
+    return item;
   } catch {
     return null;
   }
