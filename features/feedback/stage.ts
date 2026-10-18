@@ -1,7 +1,7 @@
 import { providerFor, reportUsage } from "@/lib/core/llm";
 import { createLineBuffer } from "@/lib/core/parse";
 import { researchOf } from "@/lib/core/stage";
-import { getFeedbackModel } from "@/lib/config";
+import { getFeedbackModel, getFeedbackThinking } from "@/lib/config";
 import type { PipelineStage } from "@/lib/diligence/types";
 import { parseFeedbackLine } from "./parse";
 import { buildDeckFeedbackSystemPrompt, buildDeckFeedbackUserPrompt } from "./prompts";
@@ -33,6 +33,7 @@ export const feedbackStage: PipelineStage = {
       user: buildDeckFeedbackUserPrompt(researchOf(ctx)),
       onText: lines.push,
       onUsage: reportUsage(emit, "feedback"),
+      thinking: getFeedbackThinking(),
       signal,
     });
 

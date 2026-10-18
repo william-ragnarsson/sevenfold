@@ -1,6 +1,6 @@
 import { withDeckContext } from "@/lib/core/deck-context";
 import type { Source } from "@/lib/core/types";
-import type { SystemPrompt } from "@/lib/llm/types";
+import type { JsonSchema, SystemPrompt } from "@/lib/llm/types";
 
 // ───────────────────────── Pass 6: competitive landscape ─────────────────────────
 
@@ -74,6 +74,52 @@ Rules:
 - Do NOT use em-dashes (—) or en-dashes (–) anywhere in the text values; use a regular hyphen (-) or rephrase instead.`,
   );
 }
+
+const AXIS = {
+  type: "object",
+  properties: {
+    label: { type: "string" },
+    low: { type: "string" },
+    high: { type: "string" },
+    why: { type: "string" },
+  },
+  required: ["label", "low", "high", "why"],
+};
+
+const POSITION = { type: "integer", minimum: 0, maximum: 100 };
+
+/**
+ * The map reply's shape, for models that enforce one (Gemini). Matches the
+ * format in the prompt above, keys in the same order. `parseLandscape` stays
+ * lenient all the same, since Claude only has the prompt to go on.
+ */
+export const LANDSCAPE_MAP_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    xAxis: AXIS,
+    yAxis: AXIS,
+    summary: { type: "string" },
+    companies: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          website: { type: "string" },
+          x: POSITION,
+          y: POSITION,
+          subject: { type: "boolean" },
+          description: { type: "string" },
+          whyCompetitor: { type: "string" },
+          contrast: { type: "string" },
+          rank: { type: ["integer", "null"], minimum: 1, maximum: 3 },
+        },
+        required: ["name", "website", "x", "y", "subject", "description", "whyCompetitor", "contrast", "rank"],
+      },
+    },
+  },
+  required: ["xAxis", "yAxis", "summary", "companies"],
+};
 
 export function buildLandscapeMapUserPrompt(companyName: string, notes: string, sources: Source[]): string {
   const company = companyName || "(unknown - identify it from the deck)";

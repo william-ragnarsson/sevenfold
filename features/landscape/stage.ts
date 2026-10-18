@@ -1,5 +1,5 @@
 import { providerFor, reportUsage } from "@/lib/core/llm";
-import { getLandscapeModel, getResearchMaxSearches } from "@/lib/config";
+import { getLandscapeModel, getLandscapeThinking, getResearchMaxSearches } from "@/lib/config";
 import type { PipelineStage } from "@/lib/diligence/types";
 import { landscapeFailure, parseLandscape, UnreadableMap } from "./parse";
 import {
@@ -7,6 +7,7 @@ import {
   buildLandscapeMapUserPrompt,
   buildLandscapeResearchSystemPrompt,
   buildLandscapeResearchUserPrompt,
+  LANDSCAPE_MAP_SCHEMA,
 } from "./prompts";
 
 /**
@@ -29,6 +30,7 @@ export const landscapeStage: PipelineStage = {
   critical: false,
   async run({ input, form, emit, signal }) {
     const model = getLandscapeModel();
+    const thinking = getLandscapeThinking();
     const provider = providerFor(model);
     // The startup's name from the deck pass ("" if the deck didn't say).
     const companyName = form.company.name.value;
@@ -40,6 +42,7 @@ export const landscapeStage: PipelineStage = {
       onSearch: (query) => emit({ type: "landscape-search", query }),
       onSource: ({ title, url }) => emit({ type: "landscape-source", title, url }),
       onUsage: reportUsage(emit, "landscape-search"),
+      thinking,
       signal,
     });
     signal.throwIfAborted();
@@ -49,6 +52,8 @@ export const landscapeStage: PipelineStage = {
       system: buildLandscapeMapSystemPrompt(input.playbook, input.deckText),
       user: buildLandscapeMapUserPrompt(companyName, research.findings, research.sources),
       onUsage: reportUsage(emit, "landscape"),
+      thinking,
+      jsonSchema: LANDSCAPE_MAP_SCHEMA,
       signal,
     });
 

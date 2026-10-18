@@ -1,4 +1,4 @@
-import type { SystemPrompt } from "@/lib/llm/types";
+import type { SystemPrompt, ThinkingLevel } from "@/lib/llm/types";
 import type { CoreEvent, Emit } from "./events";
 import { providerFor, reportUsage } from "./llm";
 import { createLineBuffer, parseFieldLine } from "./parse";
@@ -17,6 +17,8 @@ interface FillArgs {
   emit: Emit<CoreEvent>;
   /** Label for usage events — distinguishes the extract pass from the complete pass. */
   stage: string;
+  /** Least thinking to allow; unset means the model's minimum. */
+  thinking?: ThinkingLevel;
   /** Aborts the underlying request — cancel/disconnect stops token burn. */
   signal?: AbortSignal;
 }
@@ -27,7 +29,7 @@ interface FillArgs {
  * `field` event — so the UI fills cells in real time. Used by both the
  * deck-extract pass and the completion pass.
  */
-export async function fillFields({ model, system, user, apply, emit, stage, signal }: FillArgs): Promise<void> {
+export async function fillFields({ model, system, user, apply, emit, stage, thinking, signal }: FillArgs): Promise<void> {
   const lines = createLineBuffer((line) => {
     const parsed = parseFieldLine(line);
     if (!parsed) return;
@@ -43,6 +45,7 @@ export async function fillFields({ model, system, user, apply, emit, stage, sign
     user,
     onText: lines.push,
     onUsage: reportUsage(emit, stage),
+    thinking,
     signal,
   });
 

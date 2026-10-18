@@ -1,5 +1,5 @@
 import { providerFor, reportUsage } from "@/lib/core/llm";
-import { getResearchModel } from "@/lib/config";
+import { getResearchModel, getResearchThinking } from "@/lib/config";
 import { computeGaps } from "@/lib/diligence/form-schema";
 import type { PipelineStage } from "@/lib/diligence/types";
 import { buildSearchSystemPrompt, buildSearchUserPrompt } from "./prompts";
@@ -27,6 +27,7 @@ export const researchStage: PipelineStage = {
       onSource: (source) => emit({ type: "source", ...source }),
       onText: (text) => emit({ type: "note", text }),
       onUsage: reportUsage(emit, "search"),
+      thinking: getResearchThinking(),
       signal,
     });
     ctx.research = { findings: result.findings, sources: result.sources };

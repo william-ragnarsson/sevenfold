@@ -1,6 +1,6 @@
 import { fillFields } from "@/lib/core/fill-fields";
 import { researchOf } from "@/lib/core/stage";
-import { getCompleteModel, getExtractModel } from "@/lib/config";
+import { getCompleteModel, getCompleteThinking, getExtractModel, getExtractThinking } from "@/lib/config";
 import { applyField, FIELD_DESCRIPTORS } from "@/lib/diligence/form-schema";
 import type { PipelineStage } from "@/lib/diligence/types";
 import {
@@ -27,6 +27,7 @@ export const extractStage: PipelineStage = {
       apply: (key, value, source) => applyField(form, key, value, source),
       emit,
       stage: "extract",
+      thinking: getExtractThinking(),
       signal,
     }),
 };
@@ -44,6 +45,7 @@ export const completeStage: PipelineStage = {
       apply: (key, value, source) => applyField(ctx.form, key, value, source),
       emit: ctx.emit,
       stage: "complete",
+      thinking: getCompleteThinking(),
       signal: ctx.signal,
     }),
 };
