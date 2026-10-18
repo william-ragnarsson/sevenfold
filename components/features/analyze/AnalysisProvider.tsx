@@ -23,6 +23,7 @@ import {
   type AnalysisSummary,
 } from "@/lib/analyses/store";
 import type { SampleDeck } from "@/lib/samples/airbnb";
+import { pdfFromFile, type PdfSource } from "@/components/features/deck/pdfSource";
 
 const EMPTY_HISTORY: AnalysisSummary[] = [];
 
@@ -36,6 +37,11 @@ interface AnalysisContextValue {
   stream: AnalysisState;
   /** Hash id of the run currently in the provider (running or just-finished); null when idle. */
   currentId: string | null;
+  /**
+   * The PDF the user picked, keyed by its hash, so its report can draw slide
+   * thumbnails from the local file instead of downloading the saved copy.
+   */
+  localDeck: PdfSource | null;
   /** Start analysis for the current file. Re-viewing a saved deck routes to its report instead. */
   start: (opts?: { force?: boolean }) => void;
   /** Start analysis for a built-in sample deck — no upload, no file needed. */
@@ -64,6 +70,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [localDeck, setLocalDeck] = useState<PdfSource | null>(null);
   const [records, setRecords] = useState<AnalysisSummary[]>(EMPTY_HISTORY);
   // Which user `records` belongs to. Tracking it lets both the list and its
   // loading flag be *derived*, so switching users can't leave one account
@@ -193,7 +200,9 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       const body = new FormData();
       body.append("file", current);
 
-      await run({ id: await hashFile(current), body, force: opts?.force });
+      const id = await hashFile(current);
+      setLocalDeck(pdfFromFile(current, id));
+      await run({ id, body, force: opts?.force });
     },
     [file, run],
   );
@@ -218,6 +227,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     setStatus("idle");
     setError("");
     setCurrentId(null);
+    setLocalDeck(null);
     setFileState(null);
     dispatch({ type: "reset" });
   }, []);
@@ -246,6 +256,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     error,
     stream,
     currentId,
+    localDeck,
     start,
     startSample,
     stop,

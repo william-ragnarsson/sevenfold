@@ -24,7 +24,7 @@ function buildDeckContext(playbook: string, deckText: string): string {
 
 ${playbookBlock(playbook)}
 
-## Pitch deck text
+## Pitch deck text ([Slide N] lines mark where PDF page N begins)
 ---
 ${deckText}
 ---`;
@@ -61,6 +61,7 @@ Rules:
 - Emit the fields in the order listed below, EACH KEY AT MOST ONCE.
 - For text fields "value" is a string; for "founders" it is the JSON array.
 - "source": "deck" if it came from the pitch deck, "web" if from research, "inferred" if you reasoned it, "unknown" if you genuinely don't have it.
+- "slides": for a "deck" value, when the deck text has [Slide N] lines, also add "slides": [N, ...] with the 1-3 slide numbers the value comes from, e.g. {"key": "company.basedIn", "value": "San Francisco, CA", "source": "deck", "slides": [2]}. Only cite numbers that appear as [Slide N] lines. Leave "slides" out for any other source, or when the deck has no [Slide N] lines.
 - Do NOT fabricate. If a field can't be filled, skip it (don't emit a line).
 - Keep text values concise and specific (1-4 sentences). Output nothing except the JSON lines.
 - Do NOT use em-dashes (—) or en-dashes (–) anywhere in the text values; use a regular hyphen (-) or rephrase instead.

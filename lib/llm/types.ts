@@ -76,6 +76,15 @@ export interface GenerateArgs {
   signal?: AbortSignal;
 }
 
+export interface TranscribeOptions {
+  /** Called once with this call's token usage. */
+  onUsage?: (usage: TokenUsage) => void;
+  /** Called with each chunk of the transcription as it streams in. */
+  onText?: (delta: string) => void;
+  /** Aborts the underlying request — cancel/disconnect stops token burn. */
+  signal?: AbortSignal;
+}
+
 /**
  * One adapter per LLM vendor. Each method is a generic capability; the
  * implementation translates it into that vendor's SDK calls (model choice,
@@ -85,12 +94,7 @@ export interface LlmProvider {
   readonly name: Provider;
 
   /** OCR: transcribe an image-only / scanned PDF to plain text. */
-  transcribePdf(
-    pdf: Buffer,
-    model: string,
-    instruction: string,
-    onUsage?: (usage: TokenUsage) => void,
-  ): Promise<string>;
+  transcribePdf(pdf: Buffer, model: string, instruction: string, options?: TranscribeOptions): Promise<string>;
 
   /** Research the web; stream queries/sources; return findings + sources. */
   researchWeb(args: ResearchArgs): Promise<ResearchOutput>;

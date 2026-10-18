@@ -130,6 +130,27 @@ html, body {
 }
 .step-active { animation: step-active 1.6s ease-in-out infinite; }
 
+/* Deck section: a slide glows when a field is found on it. The frame keys
+   this layer by the find, so each new one replays it. Drawn inside the edge,
+   because the reel clips anything outside its frame. */
+@keyframes slide-found {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.slide-found {
+  position: absolute;
+  inset: 0;
+  /* The frame's rounded-lg, less its 1px border. */
+  border-radius: calc(0.5rem - 1px);
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 0 2px var(--accent-bright),
+    inset 0 0 20px 2px color-mix(in oklab, var(--accent-bright) 50%, transparent);
+  background: color-mix(in oklab, var(--accent-bright) 8%, transparent);
+  animation: slide-found 1.8s ease-out both;
+}
+
 /* Page backdrop: fine dot grid on the paper, the light-side counterpart to
    .hero-grid. Sits in a fixed layer behind every page. */
 /* A hexagonal (triangular) dot lattice rather than a square one: two identical
@@ -197,9 +218,11 @@ html, body {
   .cta-glow,
   .step-active,
   .cell-pop,
+  .slide-found,
   .animate-blink,
   .dash-active .dash-rect {
     animation: none !important;
   }
   .marker { background-size: 100% 100%; }
+  .slide-found { display: none; }
 }

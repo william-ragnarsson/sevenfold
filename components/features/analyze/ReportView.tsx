@@ -5,6 +5,7 @@ import Footer from "@/components/layout/Footer";
 import ChaptersNav from "./ChaptersNav";
 import { REPORT_SECTIONS } from "./reportSections";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import type { PdfSource } from "@/components/features/deck/pdfSource";
 
 /**
  * The results layout: a sticky "chapters" nav beside a single column of
@@ -16,10 +17,13 @@ import type { AnalysisState } from "@/lib/diligence/stream-state";
 export default function ReportView({
   state,
   active,
+  pdf,
   scrollRef,
 }: {
   state: AnalysisState;
   active: boolean;
+  /** The deck's PDF, for slide images; null when there isn't one to show. */
+  pdf: PdfSource | null;
   scrollRef: RefObject<HTMLElement | null>;
 }) {
   const sections = REPORT_SECTIONS.filter((s) => s.available(state, active));
@@ -30,7 +34,7 @@ export default function ReportView({
       <div className="min-w-0 space-y-8">
         {sections.map((s) => (
           <section key={s.id} id={s.id} className="scroll-mt-24">
-            {s.render(state, active)}
+            {s.render(state, active, { pdf })}
           </section>
         ))}
         <Footer />

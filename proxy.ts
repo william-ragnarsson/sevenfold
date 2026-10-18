@@ -69,6 +69,6 @@ export const config = {
      * with its OAuth metadata, which authenticate with bearer tokens, never
      * cookies.
      */
-    "/((?!_next/static|_next/image|favicon.ico|mcp(?:/|$)|\\.well-known/|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|xml|woff|woff2)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|mcp(?:/|$)|\\.well-known/|.*\\.(?:png|jpg|jpeg|gif|webp|svg|ico|txt|xml|woff|woff2|pdf)$).*)",
   ],
 };

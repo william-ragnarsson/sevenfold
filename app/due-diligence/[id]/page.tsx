@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import PhaseStepper from "@/components/features/analyze/PhaseStepper";
@@ -11,6 +11,8 @@ import { useAuth } from "@/components/features/auth/AuthProvider";
 import SavePrompt from "@/components/features/auth/SavePrompt";
 import { getAnalysis, type AnalysisRecord } from "@/lib/analyses/store";
 import { isStalled, STALLED_MESSAGE } from "@/lib/analyses/status";
+import { getSampleDeck } from "@/lib/samples/airbnb";
+import { pdfFromStorage, pdfFromUrl, type PdfSource } from "@/components/features/deck/pdfSource";
 
 /** How often a report whose run is still going is re-read. */
 const POLL_MS = 4000;
@@ -26,7 +28,7 @@ type Fetched = { id: string; record: AnalysisRecord | null };
 export default function ReportPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { stream, status, currentId, error } = useAnalysis();
+  const { stream, status, currentId, error, localDeck } = useAnalysis();
   const { loading: authLoading, isAnonymous, user } = useAuth();
   const userId = user?.id ?? null;
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -75,6 +77,16 @@ export default function ReportPage() {
   const record = isLive || !settled ? null : fetched.record;
   const state = isLive ? stream : record?.state ?? null;
   const active = isLive ? status === "loading" : record !== null && inProgress(record);
+  // Where the Deck section gets slide images: the file picked this session,
+  // else the bundled sample, else the saved copy. Runs started from Claude
+  // have no PDF, so their slides show as numbered tiles.
+  const deckPath = record?.deckPath ?? null;
+  const pdf = useMemo<PdfSource | null>(() => {
+    if (localDeck?.key === id) return localDeck;
+    const sample = getSampleDeck(id);
+    if (sample) return pdfFromUrl(sample.pdfPath, id);
+    return deckPath ? pdfFromStorage(deckPath, id) : null;
+  }, [id, localDeck, deckPath]);
   // A saved run that won't finish: failed, or its function died mid-way.
   const failure =
     !isLive && record && (record.status === "error" || isStalled(record.status, record.startedAt))
@@ -137,7 +149,7 @@ export default function ReportPage() {
         {isAnonymous && !active && (
           <SavePrompt className="mb-6" message="This report is saved to this browser only." />
         )}
-        <ReportView state={state} active={active} scrollRef={scrollRef} />
+        <ReportView state={state} active={active} pdf={pdf} scrollRef={scrollRef} />
       </div>
 
       {isLive && <DevCostSidebar usage={state.usage} />}

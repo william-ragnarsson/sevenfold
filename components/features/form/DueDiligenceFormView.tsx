@@ -1,15 +1,7 @@
 "use client";
 
-import { DOC_SECTIONS, sectionSlug, type FieldDescriptor } from "@/lib/diligence/form-schema";
-import type { DueDiligenceForm, Field, FieldSource } from "@/lib/diligence/types";
-
-function readField(form: DueDiligenceForm, key: string): Field | null {
-  const [section, field] = key.split(".");
-  const node = (form as unknown as Record<string, Record<string, unknown>>)[section];
-  const target = node?.[field];
-  if (target && typeof target === "object" && "value" in target) return target as Field;
-  return null;
-}
+import { DOC_SECTIONS, readField, sectionSlug, type FieldDescriptor } from "@/lib/diligence/form-schema";
+import type { DueDiligenceForm, FieldSource } from "@/lib/diligence/types";
 
 function readNumber(form: DueDiligenceForm, key: string): number {
   const metric = key.split(".")[1];

@@ -82,28 +82,33 @@ function usageOf(usage: Anthropic.Usage, model: string): TokenUsage {
 export const claudeProvider: LlmProvider = {
   name: "claude",
 
-  async transcribePdf(pdf, model, instruction, onUsage) {
-    // Stream to avoid HTTP timeouts on long transcriptions; we only need text.
-    const stream = client().messages.stream({
-      model,
-      max_tokens: getOcrMaxTokens(),
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "document",
-              source: {
-                type: "base64",
-                media_type: "application/pdf",
-                data: pdf.toString("base64"),
+  async transcribePdf(pdf, model, instruction, { onUsage, onText, signal } = {}) {
+    // Stream to avoid HTTP timeouts on long transcriptions; the deltas also feed
+    // the live deck scan.
+    const stream = client().messages.stream(
+      {
+        model,
+        max_tokens: getOcrMaxTokens(),
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdf.toString("base64"),
+                },
               },
-            },
-            { type: "text", text: instruction },
-          ],
-        },
-      ],
-    });
+              { type: "text", text: instruction },
+            ],
+          },
+        ],
+      },
+      { signal },
+    );
+    if (onText) stream.on("text", (delta: string) => onText(delta));
     const message = await stream.finalMessage();
     onUsage?.(usageOf(message.usage, model));
     return textOf(message.content);

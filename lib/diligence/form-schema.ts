@@ -1,4 +1,4 @@
-import type { DueDiligenceForm } from "./types";
+import type { DueDiligenceForm, Field } from "./types";
 
 /**
  * The due-diligence form schema — the single source of truth for what the form
@@ -105,6 +105,15 @@ export function sectionSlug(title: string): string {
 
 /** The document sub-sections shown in the DD form (the Scorecard is separate). */
 export const DOC_SECTIONS: FormSection[] = DD_SECTIONS.filter((s) => s.title !== "Scorecard");
+
+/** The `{ value, source }` cell behind a dotted text-field key, or null for any other key. */
+export function readField(form: DueDiligenceForm, key: string): Field | null {
+  const [section, field] = key.split(".");
+  const node = (form as unknown as Record<string, Record<string, unknown>>)[section];
+  const target = node?.[field];
+  if (target && typeof target === "object" && "value" in target) return target as Field;
+  return null;
+}
 
 /** Keys of the scorecard rating metrics (1–5), in model-feature order. */
 export const SCORECARD_METRIC_KEYS = [

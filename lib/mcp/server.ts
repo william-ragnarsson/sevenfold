@@ -27,6 +27,7 @@ import { runAnalysis, type AnalysisOutcome } from "@/lib/analyses/run";
 import { isStalled, runStartedAt, STALLED_MESSAGE } from "@/lib/analyses/status";
 import { initialState, streamReducer, type AnalysisState } from "@/lib/diligence/stream-state";
 import { MIN_DECK_CHARS } from "@/lib/pdf/extract";
+import { deckCharCount, parseSlides } from "@/lib/deck";
 import { OCR_INSTRUCTION } from "@/lib/pdf/extractors/instruction";
 import { createSupabaseClientForToken } from "@/lib/supabase/token";
 import type { AnalysisStatus } from "@/lib/supabase/types";
@@ -54,7 +55,7 @@ export const SERVER_OPTIONS: McpHandlerOptions = {
     "When the user shares a pitch deck:",
     "1. Transcribe the whole deck yourself, slide by slide, keeping every number, name and label",
     "   exactly as written, including chart and table values. Don't summarize: the analysis can only",
-    "   use what you send.",
+    "   use what you send. Start each slide with a line of its own, \"[Slide N]\", N being its page number.",
     "2. Call analyze_deck with that text as deck_text and the file name as deck_name.",
     "3. A run takes 2–4 minutes. If analyze_deck returns an analysis_id instead of a report, call",
     "   get_analysis with it, again each time it says the run is still going, until the report arrives.",
@@ -66,7 +67,8 @@ export const SERVER_OPTIONS: McpHandlerOptions = {
   ].join("\n"),
 };
 
-const DECK_TRANSCRIPTION = `${OCR_INSTRUCTION} Mark where each slide starts ("Slide 1", "Slide 2", ...).`;
+/** Includes the `[Slide N]` marker rule, so findings can be traced back to their slide. */
+const DECK_TRANSCRIPTION = OCR_INSTRUCTION;
 
 export function registerSevenFold(server: McpServer): void {
   server.registerTool(
@@ -178,7 +180,8 @@ async function analyzeDeck(
 ): Promise<CallToolResult> {
   const owner = ownerOf(ctx);
   const text = deck_text.trim();
-  if (text.length < MIN_DECK_CHARS) {
+  // Counted without the slide markers, so a deck of empty "[Slide N]" lines isn't enough.
+  if (deckCharCount(parseSlides(text)) < MIN_DECK_CHARS) {
     throw new Error(
       "deck_text is too short to be a pitch deck. Transcribe the whole deck, slide by slide, and send all of it.",
     );

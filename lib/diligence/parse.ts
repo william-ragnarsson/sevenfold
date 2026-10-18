@@ -10,6 +10,8 @@ export interface ParsedField {
   key: string;
   value: unknown;
   source: FieldSource;
+  /** The deck pages the model cited for this value (1-based), when it cited any. */
+  slides?: number[];
 }
 
 const VALID_SOURCES = new Set<FieldSource>(["deck", "web", "inferred", "unknown"]);
@@ -34,15 +36,35 @@ export function parseFieldLine(line: string): ParsedField | null {
   const trimmed = line.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
   if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) return null;
   try {
-    const obj = JSON.parse(trimmed) as { key?: unknown; value?: unknown; source?: unknown };
+    const obj = JSON.parse(trimmed) as { key?: unknown; value?: unknown; source?: unknown; slides?: unknown };
     if (typeof obj.key !== "string") return null;
     const source = (typeof obj.source === "string" && VALID_SOURCES.has(obj.source as FieldSource)
       ? obj.source
       : "inferred") as FieldSource;
-    return { key: obj.key, value: obj.value, source };
+    const slides = parseSlideNumbers(obj.slides);
+    return slides ? { key: obj.key, value: obj.value, source, slides } : { key: obj.key, value: obj.value, source };
   } catch {
     return null;
   }
+}
+
+/** Most pages one field may cite; more than this is the model listing the whole deck. */
+const MAX_CITED_SLIDES = 6;
+
+/**
+ * The `slides` a field line cites, as sorted, distinct page numbers. Accepts a
+ * bare number too. Anything that isn't a whole page number is dropped; pages
+ * past the end of the deck are clamped later, when the PDF's length is known.
+ */
+function parseSlideNumbers(raw: unknown): number[] | undefined {
+  const list = Array.isArray(raw) ? raw : raw == null ? [] : [raw];
+  const pages = new Set<number>();
+  for (const item of list) {
+    const n = typeof item === "string" ? Number(item.trim()) : item;
+    if (typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 999) pages.add(n);
+  }
+  const sorted = [...pages].sort((a, b) => a - b).slice(0, MAX_CITED_SLIDES);
+  return sorted.length ? sorted : undefined;
 }
 
 /**
