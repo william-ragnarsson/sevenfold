@@ -1,10 +1,10 @@
 import { providerFor, reportUsage } from "@/lib/core/llm";
 import { extractObject } from "@/lib/core/parse";
 import { researchOf } from "@/lib/core/stage";
-import { getScorecardModel } from "@/lib/config";
+import { getScorecardModel, getScorecardThinking } from "@/lib/config";
 import { applyField } from "@/lib/diligence/form-schema";
 import type { PipelineStage } from "@/lib/diligence/types";
-import { buildScorecardSystemPrompt, buildScorecardUserPrompt } from "./prompts";
+import { buildScorecardSystemPrompt, buildScorecardUserPrompt, SCORECARD_SCHEMA } from "./prompts";
 
 const METRICS = [
   "team",
@@ -34,6 +34,8 @@ export const scorecardStage: PipelineStage = {
       system: buildScorecardSystemPrompt(input.playbook, input.deckText),
       user: buildScorecardUserPrompt(researchOf(ctx)),
       onUsage: reportUsage(emit, "scorecard"),
+      thinking: getScorecardThinking(),
+      jsonSchema: SCORECARD_SCHEMA,
       signal,
     });
 

@@ -9,7 +9,7 @@
  * when a var isn't present at build.
  */
 
-import type { Provider } from "@/lib/llm/types";
+import type { Provider, ThinkingLevel } from "@/lib/llm/types";
 
 // ───────────────────────────── API keys ─────────────────────────────
 
@@ -178,6 +178,44 @@ export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini
  * provider interface.
  */
 export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "gemini-3.5-flash-lite");
+
+// ───────────────────────────── Thinking ─────────────────────────────
+
+/** The thinking levels a stage can ask for, least to most. */
+export const THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const satisfies readonly ThinkingLevel[];
+
+/**
+ * Read a stage's thinking level from `name`. Unset means "minimal", which each
+ * model raises to its own minimum (the table in lib/llm/gemini.ts), so the
+ * default is always the cheapest setting the stage's model accepts. A set but
+ * unrecognised value throws, like `envModel`.
+ */
+function envThinking(name: string): ThinkingLevel {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return "minimal";
+  if (!(THINKING_LEVELS as readonly string[]).includes(raw)) {
+    throw new Error(
+      `${name}="${raw}" is not a thinking level. Set it to one of: ` +
+        `${THINKING_LEVELS.join(", ")} (or unset it for the model's minimum).`,
+    );
+  }
+  return raw as ThinkingLevel;
+}
+
+/**
+ * Per-stage thinking level, one per *_MODEL above. Thinking is billed as output
+ * and comes out of the stage's output-token cap, so raise a stage only when its
+ * answers need more reasoning than its model gives at the minimum. Gemini only:
+ * a stage on a Claude model ignores it.
+ */
+export const getOcrThinking = (): ThinkingLevel => envThinking("OCR_THINKING");
+export const getExtractThinking = (): ThinkingLevel => envThinking("EXTRACT_THINKING");
+export const getResearchThinking = (): ThinkingLevel => envThinking("RESEARCH_THINKING");
+export const getCompleteThinking = (): ThinkingLevel => envThinking("COMPLETE_THINKING");
+export const getScorecardThinking = (): ThinkingLevel => envThinking("SCORECARD_THINKING");
+export const getFeedbackThinking = (): ThinkingLevel => envThinking("FEEDBACK_THINKING");
+/** Both landscape calls: the competitor search and the map. */
+export const getLandscapeThinking = (): ThinkingLevel => envThinking("LANDSCAPE_THINKING");
 
 // ───────────────────────── Numeric knobs ─────────────────────────
 

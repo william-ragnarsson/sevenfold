@@ -1,5 +1,5 @@
 import { getProvider } from "@/lib/llm";
-import { deriveProvider, getOcrModel } from "@/lib/config";
+import { deriveProvider, getOcrModel, getOcrThinking } from "@/lib/config";
 import { createSlideStreamParser } from "../../parser";
 import { ocrInstruction } from "./instruction";
 import type { DeckTextExtractor } from "./types";
@@ -27,6 +27,7 @@ export const visionOcrExtractor: DeckTextExtractor = {
         streamed = true;
         parser.push(delta);
       },
+      thinking: getOcrThinking(),
       signal,
     });
     // A provider that doesn't stream still returns the whole transcription.
