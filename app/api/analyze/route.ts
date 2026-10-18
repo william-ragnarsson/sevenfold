@@ -1,6 +1,7 @@
 import type { ProgressEvent } from "@/lib/diligence/types";
 import { RateLimitError, recordFor, requireAccount, SignInRequiredError } from "@/lib/analyses/persist";
 import { logEvent, runAnalysis } from "@/lib/analyses/run";
+import { countPdfPages } from "@/lib/pdf/extract";
 import { getSampleDeck } from "@/lib/samples/airbnb";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -97,7 +98,9 @@ export async function POST(req: Request) {
         }
 
         await runAnalysis({
-          deck: deckText === null ? { pdf: buffer } : { text: deckText },
+          // A sample's text is already split into `[Slide N]` pages; the page
+          // count lets the Deck section draw every page, blank ones included.
+          deck: deckText === null ? { pdf: buffer } : { text: deckText, pageCount: await countPdfPages(buffer) },
           recorder,
           onEvent: enqueue,
           signal: req.signal,

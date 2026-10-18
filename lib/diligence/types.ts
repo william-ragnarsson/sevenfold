@@ -6,6 +6,7 @@
  * the field registry in form-schema.ts) and both sides follow.
  */
 
+import type { DeckVia } from "@/lib/deck/types";
 import type { TokenUsage } from "@/lib/llm/types";
 
 export interface Source {
@@ -198,8 +199,20 @@ export interface ResearchResult {
 export type ProgressEvent =
   /** A coarse phase change in the pipeline. */
   | { type: "status"; phase: DiligencePhase; message: string }
-  /** A single form field was filled in. `value` is JSON for list/number fields. */
-  | { type: "field"; key: string; value: unknown; source: FieldSource }
+  /** Extraction started on a deck with this many pages (null when it arrived as text). */
+  | { type: "deck"; pageCount: number | null }
+  /**
+   * One page was read. Sent as soon as the page is finished (live, during vision
+   * OCR), and again if the final read differs. Empty `text` = nothing on it.
+   */
+  | { type: "slide"; index: number; text: string; truncated?: true }
+  /** Extraction finished and its text was accepted; `unassigned` = text before any marker. */
+  | { type: "deck-read"; via: DeckVia; unassigned?: string }
+  /**
+   * A single form field was filled in. `value` is JSON for list/number fields.
+   * `slides` = the deck pages the model cited for it, when it came from the deck.
+   */
+  | { type: "field"; key: string; value: unknown; source: FieldSource; slides?: number[] }
   /** A piece of deck feedback (gap/weakness/strength) was generated. */
   | { type: "feedback"; item: DeckFeedbackItem }
   /** A web search the model ran with this query. */

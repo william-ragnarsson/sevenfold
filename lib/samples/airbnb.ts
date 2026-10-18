@@ -13,15 +13,20 @@
  * Regenerating `deckText`: transcribe `public/sample-decks/airbnb-2008-seed-deck.pdf`
  * with the same instruction the OCR extractor uses (`OCR_INSTRUCTION` in
  * `lib/pdf/extractors/instruction.ts`), then apply the two edits below by hand.
+ * Keep the `[Slide N]` lines: they carry the PDF's own page numbers, which is
+ * what lets the Deck section put each line on the right thumbnail and the model
+ * cite the page a field came from.
  *
  * Two deliberate departures from a raw transcription:
  *  1. The Slidebean wrapper pages (1, 28, 29 — laptop mockup, "redesigned in
  *     slidebean.com", the discount-code outro) are dropped. Left in, the engine
  *     analyses Slidebean instead of Airbnb.
- *  2. Slides that are click-by-click build-ups of the same layout (Solution,
- *     Business Model, Market Adoption, Financial) appear once, in their final
- *     state. The engine reads the deck as prose, and three near-identical copies
- *     of one slide read as repetition rather than as a build.
+ *  2. Slides that are click-by-click build-ups of the same layout (Solution
+ *     4–6, Business Model 13–15, Market Adoption 16–18, Financial 25–27) appear
+ *     once, under the page of their final state. The engine reads the deck as
+ *     prose, and three near-identical copies of one slide read as repetition
+ *     rather than as a build.
+ * Pages left out either way show as "No new text" in the Deck section.
  */
 
 export interface SampleDeck {
@@ -45,24 +50,29 @@ export const AIRBNB_SAMPLE: SampleDeck = {
   id: "32d03bb287506fc32ee4ef20f608ceb84275270fb87fa906f1f7a10b85dc97d9",
   label: "Airbnb's 2008 seed deck",
   pdfPath: "/sample-decks/airbnb-2008-seed-deck.pdf",
-  deckText: `airbnb Pitch Deck
+  deckText: `[Slide 2]
+airbnb Pitch Deck
 Book rooms with locals rather than hotels
 
+[Slide 3]
 Problem
 Price is an important concern for customer booking travel online.
 Hotels leave you disconnected from the city and its culture.
 No easy way exists to book a room with a local or become a host.
 
+[Slide 6]
 Solution: A web platform where users can rent out their space to host travelers to
 Save Money when traveling
 Make Money when hosting
 Share Culture local connection to the city
 
+[Slide 7]
 Market Validation
 couchsurfing.com — 670,000 TOTAL USERS
 craigslist.com — 17,000 TEMPORARY HOUSING LISTINGS
 In SF & and NYC from 7/09 to 7/16
 
+[Slide 8]
 Market Size
 2 Billion + Trips Booked (WorldWide) — Total Available Market
 560 Million + Budget&Online — Serviceable Available Market
@@ -71,19 +81,25 @@ Market Size
 *source: Travel Industry Assn. of America and World Tourism Organization.
 **source: comScore
 
+[Slide 9]
 Product
 
+[Slide 10]
 Search by city
 
+[Slide 11]
 Review listings
 
+[Slide 12]
 Book it!
 
+[Slide 15]
 Business Model: we take a 10% commission on each transaction
 $84 MILLION DOLLARS — Trips with AirBnB, 15% of Available Market
 $25 AVERAGE FEE — $80/night for 3 nights
 $200 MILLION DOLLARS — Revenue, Projected by 2011
 
+[Slide 18]
 Market Adoption
 EVENTS — target events monthly
 Octoberfest (6M)
@@ -97,12 +113,16 @@ Kayak
 Orbitz
 CRAIGSLIST — dual posting feature
 
+[Slide 19]
 Competition
+
+[Slide 20]
 AFFORDABLE / EXPENSIVE
 OFFLINE TRANSACTION / ONLINE TRANSACTION
 airbnb: affordable, online transaction
 Competitors occupy the other three quadrants.
 
+[Slide 21]
 Competitive Advantage
 First to Market — for transaction-based temporary housing site
 Host Incentive — they can make money over couchsurfing.com
@@ -111,22 +131,26 @@ Ease of Use — search by price, location & check-in/check-out dates
 Profiles — browse host profiles, and book in 3 clicks
 Design and Brand — memorable name will launch at historic DNC to gain share of mind
 
+[Slide 22]
 Team
 Joe Gebbia — User Interface & PR. Holds a patent for his product, Critbuns(R). Has dual BFA's in graphic design and industrial design from Rhode Island School of Design (RISD).
 Brian Chesky — Business Development & Brand. Founder of Brian Chesky Inc, industrial design consultant. Has a BFA in industrial design from RISD.
 Nathan Blecharcyk — Developer. Created Facebook Apps "Your neighbors" (75,000 users). Computer Science from Harvard Nate. Worked @ Microsoft, OPNET Technologies and Batiq.
 Michael Seibel, Advisor — Michael is the CEO and Co-founder of justin.tv, a San Francisco based venture funded startup that delivers live video to the Internet.
 
+[Slide 23]
 Press
 "AirBed & Breakfast is a fun approach to CouchSurfing" — Webware
 "A cool alternative to a boring evening in a hotel room" — Mashable
 "Think of it a Craigslist meets hotels.com, but a lot less crappy." — Josh Spear
 
+[Slide 24]
 User Testimonials
 "AirBed & Breakfast freaking rocks!" — Josue F, Washington DC
 "A complete success! It is easy to use and made me money." — Emily M, Austin TX
 "It's about the ideas, the interactions, the people. You don't get that in a hotel room." — Dan A, Ontario, Canada.
 
+[Slide 27]
 Financial
 We are looking for 12 months financing to reach 80,000 transactions on AirBed&Breakfast
 $500K Angel Round — initial investment opportunity

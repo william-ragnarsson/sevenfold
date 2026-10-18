@@ -4,8 +4,16 @@ import DeckFeedbackPanel from "@/components/features/form/DeckFeedbackPanel";
 import ScorecardPanel from "@/components/features/form/ScorecardPanel";
 import { ResearchFindings, WebSearch } from "@/components/features/analyze/ResearchLog";
 import DueDiligenceFormView from "@/components/features/form/DueDiligenceFormView";
+import DeckSection from "@/components/features/deck/DeckSection";
 import LandscapePanel from "@/components/features/landscape/LandscapePanel";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import type { PdfSource } from "@/components/features/deck/pdfSource";
+
+/** What a section may need beyond the analysis state. */
+export interface ReportEnv {
+  /** The deck's PDF, for slide images. */
+  pdf: PdfSource | null;
+}
 
 /**
  * The report section registry — the single place that decides what sections the
@@ -20,7 +28,7 @@ export interface ReportSection {
   label: string;
   /** Gate a section until it has real data to show, or the run is still active (skeleton). */
   available: (state: AnalysisState, active: boolean) => boolean;
-  render: (state: AnalysisState, active: boolean) => ReactNode;
+  render: (state: AnalysisState, active: boolean, env: ReportEnv) => ReactNode;
 }
 
 export const REPORT_SECTIONS: ReportSection[] = [
@@ -29,6 +37,15 @@ export const REPORT_SECTIONS: ReportSection[] = [
     label: "Verdict",
     available: (s, active) => active || !!s.verdict,
     render: (s, active) => <VerdictPopup verdict={s.verdict} active={active} />,
+  },
+  {
+    id: "deck",
+    label: "Deck",
+    // Reports saved before per-slide reading existed have no deck slice.
+    available: (s, active) => active || !!s.deck,
+    render: (s, active, env) => (
+      <DeckSection key={s.startedAt} deck={s.deck} form={s.form} active={active} pdf={env.pdf} />
+    ),
   },
   {
     id: "feedback",

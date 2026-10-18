@@ -7,7 +7,9 @@
  * extraction, error messages, and persistence from here.
  */
 
-import { extractDeckText } from "@/lib/pdf/extract";
+import { extractDeck, provideDeck } from "@/lib/pdf/extract";
+import type { DeckSink } from "@/lib/pdf/extract";
+import { createDeckBudget } from "@/lib/deck";
 import { loadPlaybook } from "@/lib/playbook/load";
 import { getDiligenceEngine } from "@/lib/diligence/engine";
 import { EmptyDeckError } from "@/lib/diligence/types";
@@ -20,8 +22,11 @@ export type AnalysisOutcome =
   | { ok: false; message: string };
 
 export interface RunAnalysisArgs {
-  /** Where the deck text comes from: already extracted, or a PDF to extract. */
-  deck: { text: string } | { pdf: Buffer };
+  /**
+   * Where the deck text comes from: already extracted (with the PDF's page
+   * count when it's known), or a PDF to extract.
+   */
+  deck: { text: string; pageCount?: number | null } | { pdf: Buffer };
   recorder: AnalysisRecorder;
   /** Called with every event, after the recorder has seen it. */
   onEvent?: (event: ProgressEvent) => void;
@@ -56,13 +61,27 @@ export async function runAnalysis({
     return { ok: false, message };
   };
 
+  // Reading the deck, page by page, as events. The budget clips the text that
+  // is streamed and saved; the pipeline still gets every page in full.
+  const budget = createDeckBudget();
+  const sink: DeckSink = {
+    pageCount: (pageCount) => send({ type: "deck", pageCount }),
+    slide: (slide) => send({ type: "slide", ...budget.slide(slide) }),
+    read: (via, unassigned) => {
+      const kept = budget.unassigned(unassigned);
+      send(kept ? { type: "deck-read", via, unassigned: kept } : { type: "deck-read", via });
+    },
+  };
+
   try {
-    const deckText =
+    const { deckText } =
       "text" in deck
-        ? deck.text
-        : await extractDeckText(deck.pdf, (usage) =>
-            send({ type: "usage", stage: "ocr", usage, costUsd: costOf(usage) }),
-          );
+        ? provideDeck(deck.text, deck.pageCount ?? null, sink)
+        : await extractDeck(deck.pdf, {
+            onUsage: (usage) => send({ type: "usage", stage: "ocr", usage, costUsd: costOf(usage) }),
+            sink,
+            signal,
+          });
     const playbook = loadPlaybook();
 
     const report = await getDiligenceEngine().run({ deckText, playbook }, send, signal);
@@ -122,6 +141,13 @@ export function logEvent(tag: string, event: ProgressEvent): void {
     console.log(`${tag} 🗺 landscape failed:`, event.message);
   } else if (event.type === "usage") {
     console.log(`${tag} 💰 usage: ${event.stage} $${event.costUsd.toFixed(4)}`);
+  } else if (event.type === "deck") {
+    console.log(`${tag} 🗂 deck: ${event.pageCount ?? "?"} pages`);
+  } else if (event.type === "slide") {
+    // Never the text itself — a deck can be confidential.
+    console.log(`${tag}   slide ${event.index}: ${event.text.length} chars${event.truncated ? " (clipped)" : ""}`);
+  } else if (event.type === "deck-read") {
+    console.log(`${tag} 🗂 deck read via ${event.via}${event.unassigned ? " (no slide markers)" : ""}`);
   } else {
     console.log(`${tag} •`, event.phase, "—", event.message);
   }

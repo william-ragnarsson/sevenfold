@@ -83,13 +83,13 @@ function interactionUsageOf(usage: Interactions.Usage | undefined, model: string
 export const geminiProvider: LlmProvider = {
   name: "gemini",
 
-  async transcribePdf(pdf, model, instruction, onUsage) {
+  async transcribePdf(pdf, model, instruction, { onUsage, onText, signal } = {}) {
     // Stream, for the same reason the Claude adapter does (see claude.ts): a whole
     // image-only deck plus a transcription of up to OCR_MAX_TOKENS is one very long
     // request, and the non-streaming endpoint gives up on it server-side with
     // 503 UNAVAILABLE "Deadline expired before operation could complete". Keeping
-    // bytes flowing avoids that entirely. We still only want the final text — the
-    // chunks aren't surfaced anywhere, since OCR has no progress UI.
+    // bytes flowing avoids that entirely. The chunks also drive the live deck
+    // scan: the vision-OCR extractor splits them into slides as they arrive.
     const stream = await ai().models.generateContentStream({
       model,
       contents: [
@@ -97,7 +97,7 @@ export const geminiProvider: LlmProvider = {
         { text: instruction },
       ],
       // Thinking minimised — as much of the budget as possible goes to transcription.
-      config: { maxOutputTokens: getOcrMaxTokens(), thinkingConfig: minimalThinking(model) },
+      config: { maxOutputTokens: getOcrMaxTokens(), thinkingConfig: minimalThinking(model), abortSignal: signal },
     });
 
     let text = "";
@@ -105,7 +105,10 @@ export const geminiProvider: LlmProvider = {
     for await (const chunk of stream) {
       // Usage arrives cumulatively; the final chunk carries the totals.
       if (chunk.usageMetadata) lastUsage = chunk.usageMetadata;
-      if (chunk.text) text += chunk.text;
+      if (chunk.text) {
+        text += chunk.text;
+        onText?.(chunk.text);
+      }
     }
     onUsage?.(usageOf(lastUsage, model));
     return text.trim();

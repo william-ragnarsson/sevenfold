@@ -32,7 +32,8 @@ export async function fillFields({ model, system, user, form, emit, stage, signa
     const parsed = parseFieldLine(line);
     if (!parsed) return;
     if (applyField(form, parsed.key, parsed.value, parsed.source)) {
-      emit({ type: "field", key: parsed.key, value: parsed.value, source: parsed.source });
+      const { key, value, source, slides } = parsed;
+      emit(slides ? { type: "field", key, value, source, slides } : { type: "field", key, value, source });
     }
   };
 

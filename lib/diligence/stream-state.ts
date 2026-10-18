@@ -1,5 +1,6 @@
 import { emptyForm } from "@/lib/diligence/form-schema";
 import { applyField } from "@/lib/diligence/parse";
+import { foldDeck, type DeckState } from "@/lib/deck";
 import { cacheSavingsOf } from "@/lib/llm/pricing";
 import type {
   CompetitiveLandscape,
@@ -84,6 +85,11 @@ export interface AnalysisState {
    * the flag; there 0 meant unknown and amounts were in the deck's currency.
    */
   fundingInUsd?: true;
+  /**
+   * The deck page by page: what was read off each slide and which fields were
+   * cited from it (see `lib/deck`). Absent on reports saved before it existed.
+   */
+  deck?: DeckState;
 }
 
 const STEP_ORDER: { phase: DiligencePhase; label: string }[] = [
@@ -144,8 +150,13 @@ export type StreamAction =
 export function streamReducer(state: AnalysisState, action: StreamAction): AnalysisState {
   if (action.type === "reset") return initialState();
   if (action.type === "hydrate") return action.state;
-  const event = action.event;
+  const next = reduceEvent(state, action.event);
+  // The deck slice folds separately, so it stays one self-contained module.
+  const deck = foldDeck(next.deck, action.event);
+  return deck === next.deck ? next : { ...next, deck };
+}
 
+function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState {
   switch (event.type) {
     case "status":
       return { ...state, phase: event.phase, steps: advanceSteps(state.steps, event.phase) };
