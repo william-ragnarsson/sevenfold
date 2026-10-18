@@ -169,6 +169,16 @@ export const getCompleteModel = (): string => envModel("COMPLETE_MODEL", "gemini
 export const getScorecardModel = (): string => envModel("SCORECARD_MODEL", "gemini-3.5-flash");
 export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini-3.5-flash");
 
+/**
+ * The competitive landscape stage, on Gemini like the rest. Its search sources
+ * come back as Google redirect links, so each competitor's logo and link rely on
+ * the homepage the model writes into its notes. If those come out sparse,
+ * `claude-haiku-4-5` is the alternative: Claude's web search returns real page
+ * URLs. Any KNOWN_MODELS id works, since the stage only talks to the generic
+ * provider interface.
+ */
+export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "gemini-3.5-flash");
+
 // ───────────────────────── Numeric knobs ─────────────────────────
 
 /** Parse an int env var, clamping to [min, max] and warning on a bad value. */
@@ -191,11 +201,11 @@ function envInt(name: string, fallback: number, min: number, max: number): numbe
  * Web-research budget. `max searches` caps the web_search tool's uses; `max
  * continuations` caps how many times the server-side pause_turn loop resumes.
  *
- * NOTE: both gate Claude's `web_search` tool only. Gemini's Google Search
- * grounding self-manages and never reads them, so with the default
- * `RESEARCH_MODEL` (Gemini) these values have **no effect at all**. Set
- * `RESEARCH_MODEL=claude-haiku-4-5` if you need a hard ceiling on the most
- * expensive stage.
+ * NOTE: both gate Claude's `web_search` tool only, per call. Gemini's Google
+ * Search grounding self-manages and never reads them, so with the default
+ * `RESEARCH_MODEL` (Gemini) they cap only the landscape stage (Claude by
+ * default). Set `RESEARCH_MODEL=claude-haiku-4-5` if you need a hard ceiling on
+ * the most expensive stage too.
  */
 export const getResearchMaxSearches = (): number => envInt("RESEARCH_MAX_SEARCHES", 3, 0, 10);
 export const getResearchMaxContinuations = (): number =>

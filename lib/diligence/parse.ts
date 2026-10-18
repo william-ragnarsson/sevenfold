@@ -60,6 +60,18 @@ export function cleanDashes(text: string): string {
     .replace(/ {2,}/g, " "); // collapse doubled spaces
 }
 
+/** Pull the first {...} object out of the model's text, tolerating fences/prose. */
+export function extractObject(text: string): Record<string, unknown> | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
 function str(v: unknown): string {
   const s = typeof v === "string" ? v : v == null ? "" : String(v);
   return cleanDashes(s);

@@ -4,6 +4,7 @@ import DeckFeedbackPanel from "@/components/features/form/DeckFeedbackPanel";
 import ScorecardPanel from "@/components/features/form/ScorecardPanel";
 import { ResearchFindings, WebSearch } from "@/components/features/analyze/ResearchLog";
 import DueDiligenceFormView from "@/components/features/form/DueDiligenceFormView";
+import LandscapePanel from "@/components/features/landscape/LandscapePanel";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
 
 /**
@@ -40,6 +41,21 @@ export const REPORT_SECTIONS: ReportSection[] = [
     label: "Scorecard",
     available: () => true,
     render: (s, active) => <ScorecardPanel form={s.form} active={active} legacyFunding={!s.fundingInUsd} />,
+  },
+  {
+    id: "landscape",
+    label: "Competitive Landscape",
+    // Reports saved before this section have no `landscape` at all. A failed
+    // stage stays visible and says why, rather than vanishing when the run ends.
+    available: (s, active) => active || !!s.landscape || !!s.landscapeError,
+    render: (s, active) => (
+      <LandscapePanel
+        landscape={s.landscape ?? null}
+        error={s.landscapeError ?? null}
+        searches={s.landscapeSearches ?? []}
+        active={active}
+      />
+    ),
   },
   {
     id: "findings",
