@@ -5,7 +5,7 @@ import Card from "@/components/ui/Card";
 import type { AnalysisState, SearchGroup } from "@/lib/diligence/stream-state";
 import { domainOf, faviconOf } from "./sourceDisplay";
 
-function SourceRow({ title, url }: { title: string; url: string }) {
+export function SourceRow({ title, url }: { title: string; url: string }) {
   const favicon = faviconOf(url);
   const domain = domainOf(url);
   return (
@@ -60,7 +60,7 @@ function SearchBlock({ group }: { group: SearchGroup }) {
  * streams in — but only while the user is already near the bottom, so scrolling
  * up to read an earlier source doesn't get yanked back down.
  */
-function SearchList({ searches, sourceCount }: { searches: SearchGroup[]; sourceCount: number }) {
+export function SearchList({ searches, sourceCount }: { searches: SearchGroup[]; sourceCount: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
 

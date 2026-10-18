@@ -11,7 +11,14 @@
 import { domainOf } from "@/components/features/analyze/sourceDisplay";
 import { DD_SECTIONS, SCORECARD_METRIC_KEYS } from "@/lib/diligence/form-schema";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
-import type { DeckFeedbackItem, DueDiligenceForm, Field, InvestVerdict, Source } from "@/lib/diligence/types";
+import type {
+  CompetitiveLandscape,
+  DeckFeedbackItem,
+  DueDiligenceForm,
+  Field,
+  InvestVerdict,
+  Source,
+} from "@/lib/diligence/types";
 import { formatGauge } from "@/lib/invest/gauge";
 
 /** Research sources listed in a report; the rest are a click away on the page. */
@@ -33,7 +40,7 @@ const SCORE_LABELS: Record<(typeof SCORECARD_METRIC_KEYS)[number], string> = {
   socialImpact: "Social impact",
 };
 
-/** The finished report: verdict, scorecard, every form section, feedback, sources. */
+/** The finished report: verdict, scorecard, every form section, feedback, landscape, sources. */
 export function renderReport(state: AnalysisState, { url, name }: { url: string; name: string }): string {
   const form = state.form;
   const company = form.company.name.value.trim() || name;
@@ -67,6 +74,7 @@ export function renderReport(state: AnalysisState, { url, name }: { url: string;
   }
 
   out.push(...renderFeedback(state.deckFeedback.length ? state.deckFeedback : form.deckFeedback));
+  out.push(...renderLandscape(state.landscape ?? form.landscape ?? null));
   out.push(...renderSources(collectSources(state, form)));
 
   out.push(
@@ -167,6 +175,51 @@ function renderFeedback(items: DeckFeedbackItem[]): string[] {
     if (group.length === 0) continue;
     out.push(`### ${title}`);
     for (const item of group) out.push(`- **${item.title}** (${item.category}): ${item.detail}`);
+    out.push("");
+  }
+  return out;
+}
+
+/** A table cell's text, with the characters that would break the row escaped. */
+function cell(text: string): string {
+  return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+}
+
+/** A homepage as a short markdown link, e.g. [vrbo.com](https://www.vrbo.com/). */
+function siteLink(url: string): string {
+  const domain = url ? domainOf(url) : null;
+  return domain ? `[${domain}](${url})` : "—";
+}
+
+function renderLandscape(landscape: CompetitiveLandscape | null): string[] {
+  if (!landscape) return [];
+  const { xAxis, yAxis, companies } = landscape;
+  const subject = companies.find((c) => c.subject);
+  const out = ["## Competitive landscape", ""];
+  if (landscape.summary) out.push(landscape.summary, "");
+
+  out.push(`**Axes:** ${xAxis.label} (${xAxis.low} → ${xAxis.high}) × ${yAxis.label} (${yAxis.low} → ${yAxis.high})`);
+  for (const axis of [xAxis, yAxis]) if (axis.why) out.push(`- **${axis.label}:** ${axis.why}`);
+  out.push("");
+
+  out.push(`| Company | Website | ${cell(xAxis.label)} (0–100) | ${cell(yAxis.label)} (0–100) |`);
+  out.push("|---|---|---|---|");
+  for (const c of companies) {
+    const name = c.subject ? `**${cell(c.name)}** (the startup)` : cell(c.name);
+    out.push(`| ${name} | ${siteLink(c.website)} | ${c.x} | ${c.y} |`);
+  }
+  out.push("");
+
+  const top = companies.filter((c) => c.rank !== null).sort((a, b) => a.rank! - b.rank!);
+  if (top.length > 0) {
+    out.push("### Top competitors");
+    for (const c of top) {
+      const reasons = [
+        c.whyCompetitor,
+        c.contrast ? `How ${subject?.name ?? "the startup"} differs: ${c.contrast}` : "",
+      ].filter(Boolean);
+      out.push(`${c.rank}. **${c.name}** (${siteLink(c.website)}): ${reasons.join(" ") || c.description}`);
+    }
     out.push("");
   }
   return out;

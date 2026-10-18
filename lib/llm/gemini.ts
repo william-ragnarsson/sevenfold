@@ -7,7 +7,7 @@ import type {
   TokenUsage,
   WebSource,
 } from "./types";
-import type { GenerateContentResponseUsageMetadata } from "@google/genai";
+import type { GenerateContentResponseUsageMetadata, Interactions } from "@google/genai";
 
 function ai(): GoogleGenAI {
   return new GoogleGenAI({ apiKey: getGeminiApiKey() });
@@ -64,6 +64,21 @@ function usageOf(usage: GenerateContentResponseUsageMetadata | undefined, model:
   };
 }
 
+/**
+ * The same, for the Interactions API's usage block. Search results the model
+ * read count as input and its thinking counts as output; Google bills both.
+ */
+function interactionUsageOf(usage: Interactions.Usage | undefined, model: string): TokenUsage {
+  return {
+    inputTokens: (usage?.total_input_tokens ?? 0) + (usage?.total_tool_use_tokens ?? 0),
+    outputTokens: (usage?.total_output_tokens ?? 0) + (usage?.total_thought_tokens ?? 0),
+    cacheReadTokens: usage?.total_cached_tokens ?? 0,
+    cacheCreationTokens: 0,
+    model,
+    provider: "gemini",
+  };
+}
+
 /** Google Gemini adapter — translates the generic capabilities to the SDK. */
 export const geminiProvider: LlmProvider = {
   name: "gemini",
@@ -97,50 +112,77 @@ export const geminiProvider: LlmProvider = {
   },
 
   async researchWeb({ model, system, user, onSearch, onSource, onText, onUsage, signal }): Promise<ResearchOutput> {
-    const stream = await ai().models.generateContentStream({
-      model,
-      contents: user,
-      // Google Search grounding — the equivalent of Claude's web_search.
-      config: { systemInstruction: toSystemInstruction(system), tools: [{ googleSearch: {} }], abortSignal: signal },
-    });
+    // The Interactions API rather than generateContent: it streams each Google
+    // Search call as a step the moment the model makes it, so searches show up
+    // live like Claude's. generateContent only reports its grounding in one burst
+    // at the end. Sources arrive as url_citation annotations on the answer text;
+    // their URLs are Google redirect links.
+    const stream = await ai().interactions.create(
+      {
+        model,
+        input: user,
+        system_instruction: toSystemInstruction(system),
+        tools: [{ type: "google_search" }],
+        stream: true,
+        store: false,
+      },
+      { signal },
+    );
 
     const sources: WebSource[] = [];
     const seenQueries = new Set<string>();
     const seenSources = new Set<string>();
     let findings = "";
-    let lastFinish: string | undefined;
-    let lastUsage: GenerateContentResponseUsageMetadata | undefined;
+    let status: string | undefined;
+    let usage: Interactions.Usage | undefined;
 
-    for await (const chunk of stream) {
-      if (chunk.candidates?.[0]?.finishReason) lastFinish = chunk.candidates[0].finishReason;
-      if (chunk.usageMetadata) lastUsage = chunk.usageMetadata;
-      if (chunk.text) {
-        findings += chunk.text;
-        onText?.(chunk.text); // surface findings prose live (observational only)
-      }
-
-      // Grounding metadata arrives near the end of the stream (a burst), not
-      // live per-query like Claude. Source URLs are Google redirect links.
-      const grounding = chunk.candidates?.[0]?.groundingMetadata;
-      if (!grounding) continue;
-
-      for (const query of grounding.webSearchQueries ?? []) {
+    const search = (queries: string[] | undefined) => {
+      for (const query of queries ?? []) {
         if (!query || seenQueries.has(query)) continue;
         seenQueries.add(query);
         onSearch?.(query);
       }
-      for (const groundingChunk of grounding.groundingChunks ?? []) {
-        const web = groundingChunk.web;
-        if (!web?.uri || seenSources.has(web.uri)) continue;
-        seenSources.add(web.uri);
-        const source: WebSource = { title: web.title ?? web.uri, url: web.uri };
+    };
+    const cite = (annotations: Interactions.Annotation[] | undefined) => {
+      for (const annotation of annotations ?? []) {
+        if (annotation.type !== "url_citation" || !annotation.url || seenSources.has(annotation.url)) continue;
+        seenSources.add(annotation.url);
+        const source: WebSource = { title: annotation.title || annotation.url, url: annotation.url };
         sources.push(source);
         onSource?.(source);
       }
+    };
+    const write = (text: string) => {
+      findings += text;
+      onText?.(text); // surface findings prose live (observational only)
+    };
+
+    for await (const event of stream) {
+      if (event.event_type === "step.start") {
+        const step = event.step;
+        if (step.type === "google_search_call") search(step.arguments?.queries);
+        if (step.type === "model_output") {
+          for (const content of step.content ?? []) {
+            if (content.type !== "text") continue;
+            if (content.text) write(content.text);
+            cite(content.annotations);
+          }
+        }
+      } else if (event.event_type === "step.delta") {
+        const delta = event.delta;
+        if (delta.type === "google_search_call") search(delta.arguments?.queries);
+        else if (delta.type === "text") write(delta.text);
+        else if (delta.type === "text_annotation_delta") cite(delta.annotations);
+      } else if (event.event_type === "interaction.completed") {
+        status = event.interaction.status;
+        usage = event.interaction.usage;
+      } else if (event.event_type === "error") {
+        throw new Error(`Gemini interaction failed: ${event.error?.message ?? event.error?.code ?? "unknown error"}`);
+      }
     }
 
-    console.log(`[gemini.researchWeb] finish=${lastFinish} findingsLen=${findings.length} queries=${seenQueries.size} sources=${sources.length}`);
-    onUsage?.(usageOf(lastUsage, model));
+    console.log(`[gemini.researchWeb] status=${status} findingsLen=${findings.length} queries=${seenQueries.size} sources=${sources.length}`);
+    onUsage?.(interactionUsageOf(usage, model));
     return { findings: findings.trim(), sources };
   },
 

@@ -5,7 +5,7 @@ import {
   buildScorecardSystemPrompt,
   buildScorecardUserPrompt,
 } from "@/lib/diligence/prompt";
-import { applyField } from "./parse";
+import { applyField, extractObject } from "./parse";
 import type { DueDiligenceForm, ProgressCallback, ResearchResult } from "./types";
 
 interface ScoreArgs {
@@ -30,18 +30,6 @@ const METRICS = [
   "socialImpact",
   "funding",
 ] as const;
-
-/** Pull the first {...} object out of the model's text, tolerating fences/prose. */
-function extractObject(text: string): Record<string, unknown> | null {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return null;
-  try {
-    return JSON.parse(text.slice(start, end + 1)) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Dedicated scorecard stage. The scorecard is the only input to the trained

@@ -17,9 +17,13 @@ export function domainOf(url: string): string | null {
   }
 }
 
-/** A favicon URL for a real domain, or null when there's no usable domain. */
-export function faviconOf(url: string): string | null {
+/**
+ * A favicon URL for a real domain, or null when there's no usable domain.
+ * `size` is the pixel size asked for; sites without an icon that large get
+ * the largest one they have.
+ */
+export function faviconOf(url: string, size = 64): string | null {
   const domain = domainOf(url);
   if (!domain) return null;
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=${size}`;
 }
