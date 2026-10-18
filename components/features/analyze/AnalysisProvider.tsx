@@ -15,6 +15,8 @@ import { initialState, streamReducer, type AnalysisState } from "@/lib/diligence
 import { readProgressStream } from "@/lib/diligence/stream";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { hashFile } from "@/lib/analyses/hash";
+import { stashDeck } from "@/lib/analyses/pending-deck";
+import { analysisPath, ROUTES, signInPath } from "@/lib/routes";
 import {
   clearAnalyses,
   deleteAnalysis,
@@ -36,8 +38,12 @@ interface AnalysisContextValue {
   stream: AnalysisState;
   /** Hash id of the run currently in the provider (running or just-finished); null when idle. */
   currentId: string | null;
-  /** Start analysis for the current file. Re-viewing a saved deck routes to its report instead. */
-  start: (opts?: { force?: boolean }) => void;
+  /**
+   * Start analysis for the current file, or `opts.file` when the caller has
+   * one that hasn't reached state yet. Re-viewing a saved deck routes to its
+   * report instead; without an account, it goes to sign-up first.
+   */
+  start: (opts?: { force?: boolean; file?: File }) => void;
   /** Start analysis for a built-in sample deck — no upload, no file needed. */
   startSample: (sample: SampleDeck, opts?: { force?: boolean }) => void;
   /** Aborts an in-flight run (if any) and clears back to the dropzone state. */
@@ -59,7 +65,7 @@ export function useAnalysis(): AnalysisContextValue {
 }
 
 export default function AnalysisProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading, dataVersion, ensureAnonymous } = useAuth();
+  const { user, loading: authLoading, dataVersion, configured, isIdentified } = useAuth();
   const [file, setFileState] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
@@ -117,13 +123,11 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
    */
   const run = useCallback(
     async ({ id, body, force }: { id: string; body: FormData; force?: boolean }) => {
-      // Claim the run and navigate *first*. Everything below needs the network
-      // — minting an anonymous user costs a getUser plus a signInAnonymously,
-      // and the dedupe check is a third round-trip — and doing that before any
-      // state changed left the button sitting there looking dead for the whole
-      // handshake. Both outcomes land on this same URL anyway.
+      // Claim the run and navigate *first*. The dedupe check below is a
+      // round-trip, and doing it before any state changed left the button
+      // sitting there looking dead. Both outcomes land on this same URL anyway.
       //
-      // It has to be the full claim, not just the push: `/due-diligence/[id]`
+      // It has to be the full claim, not just the push: the report page
       // decides it is showing a live run from `currentId`, so navigating
       // without setting it flashes "This analysis isn't available" until the
       // lookup returns.
@@ -131,16 +135,12 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       setStatus("loading");
       setError("");
       dispatch({ type: "reset" });
-      router.push(`/due-diligence/${id}`);
+      router.push(analysisPath(id));
 
-      // Both of these are conveniences, not gates, so neither is allowed to take
-      // the run down with it — and now that the loading state is already on
-      // screen, an unhandled rejection here would strand it there forever.
+      // A convenience, not a gate, so it isn't allowed to take the run down
+      // with it — and now that the loading state is already on screen, an
+      // unhandled rejection here would strand it there forever.
       try {
-        // Nothing is gated, but persistence needs *a* user — so one is minted
-        // here, at the first real action, rather than on every page load.
-        await ensureAnonymous();
-
         // Already analyzed this exact deck — hand the page over to the saved
         // copy rather than spending another few minutes on the same answer.
         if (!force) {
@@ -182,20 +182,37 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
         await refreshHistory();
       }
     },
-    [router, ensureAnonymous, refreshHistory],
+    [router, refreshHistory],
+  );
+
+  /**
+   * Runs need an account (the route checks too). Someone without one — the
+   * landing page's dropzone is open to everyone — has their pick kept in the
+   * browser and is sent to sign up; the dashboard starts it once they're in
+   * (`ResumeStashedDeck`). Returns whether it took the deck.
+   */
+  const deferUntilSignedIn = useCallback(
+    async (deck: { file: File } | { sampleId: string }) => {
+      if (!configured || isIdentified) return false;
+      await stashDeck(deck);
+      router.push(signInPath(ROUTES.dueDiligence));
+      return true;
+    },
+    [configured, isIdentified, router],
   );
 
   const start = useCallback(
-    async (opts?: { force?: boolean }) => {
-      const current = file;
+    async (opts?: { force?: boolean; file?: File }) => {
+      const current = opts?.file ?? file;
       if (!current) return;
+      if (await deferUntilSignedIn({ file: current })) return;
 
       const body = new FormData();
       body.append("file", current);
 
       await run({ id: await hashFile(current), body, force: opts?.force });
     },
-    [file, run],
+    [file, run, deferUntilSignedIn],
   );
 
   /**
@@ -205,12 +222,14 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
    */
   const startSample = useCallback(
     async (sample: SampleDeck, opts?: { force?: boolean }) => {
+      if (await deferUntilSignedIn({ sampleId: sample.id })) return;
+
       const body = new FormData();
       body.append("sample", sample.id);
 
       await run({ id: sample.id, body, force: opts?.force });
     },
-    [run],
+    [run, deferUntilSignedIn],
   );
 
   const stop = useCallback(() => {

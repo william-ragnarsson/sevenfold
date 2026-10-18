@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAnalysis } from "./AnalysisProvider";
+import { analysisPath } from "@/lib/routes";
 
 type CurrentAnalysisCardProps = {
   /** `dark` restyles the card for the hero card's dark surface. */
@@ -75,7 +76,7 @@ export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisC
           </p>
         </div>
         <Link
-          href={`/due-diligence/${currentId}`}
+          href={analysisPath(currentId)}
           className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors after:absolute after:inset-0 after:rounded-2xl ${t.view}`}
         >
           View<span className="hidden sm:inline"> report</span>{" "}

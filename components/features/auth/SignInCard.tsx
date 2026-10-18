@@ -15,10 +15,9 @@ const BENEFITS = [
 ];
 
 /**
- * The one sign-in surface, shared by the nav dropdown (`UserMenu`), the save
- * nudge's modal (`SignInDialog`), the signed-out account page and the
- * password page, so all four look and read the same. It renders the card
- * itself; callers only place it.
+ * The one sign-in surface, shared by the sign-in page and the OAuth consent
+ * screen, so both look and read the same. It renders the card itself;
+ * callers only place it.
  *
  * With Google, logging in and signing up are the same round trip — the
  * account is created on first sign-in — so the first view says so instead of

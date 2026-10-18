@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { hasPassword, loginProviders } from "@/components/features/auth/providers";
-import SignInCard from "@/components/features/auth/SignInCard";
 import RecentAnalyses from "@/components/features/analyze/RecentAnalyses";
+import { ROUTES } from "@/lib/routes";
 
 export default function AccountPage() {
   const { user, isIdentified, loading, configured, signOut } = useAuth();
@@ -21,13 +21,9 @@ export default function AccountPage() {
     return <div className="mx-auto max-w-3xl px-6 pt-10 text-muted">Loading…</div>;
   }
 
-  if (!isIdentified) {
-    return (
-      <div className="mx-auto max-w-sm px-4 pt-10">
-        <SignInCard title="Sign in to your account" />
-      </div>
-    );
-  }
+  // `proxy.ts` only lets accounts in. Signed out mid-visit, AppShell is
+  // already taking you home.
+  if (!isIdentified) return null;
 
   const email = user?.email ?? "";
   const name = (user?.user_metadata?.full_name as string | undefined) ?? email;
@@ -55,7 +51,7 @@ export default function AccountPage() {
         throw new Error(body.error || `Failed to delete account (error ${res.status}).`);
       }
       await signOut();
-      router.push("/");
+      router.push(ROUTES.home);
     } catch (e) {
       setDeleting(false);
       setDeleteError(e instanceof Error ? e.message : "Something went wrong.");
@@ -98,7 +94,7 @@ export default function AccountPage() {
               : "Set a password so you can also log in with your email."}
           </p>
           <Link
-            href="/account/password"
+            href={ROUTES.password}
             className="shrink-0 rounded-full border border-ink/15 px-4 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-ink/[0.06]"
           >
             {withPassword ? "Change password" : "Set a password"}
