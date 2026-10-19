@@ -419,12 +419,19 @@ command. Don't edit `.claude/launch.json` without asking the owner.
 - `/dashboard` is gated, and a browser agent can't sign in. Free to check:
   `/`, `/sign-in`, and the landing page's report mock.
 - With accounts off, the dashboard shell, `/dashboard/model` and
-  `/dashboard/rubric` render too.
-  - Accounts-off mode means Supabase env blanked:
-    `NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= npm run dev`.
-    This should work but hasn't been tried.
-  - It needs a launch entry the owner adds.
-  - Nothing is saved, but a run still costs money.
+  `/dashboard/rubric` render too, ungated, and the nav bar shows "Dashboard".
+  - Accounts-off mode means no Supabase env. A worktree with no `.env` runs in
+    it under the usual "Next.js dev server" config. Where `.env` is present,
+    blanking the vars
+    (`NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= npm run dev`)
+    should do the same but hasn't been tried, and needs a launch entry the
+    owner adds.
+  - With no saved analyses, an analysis page shows only its missing state. A
+    run started in that tab shows the sidebar's product tabs and status dots
+    until a reload drops it. With no `GEMINI_API_KEY` either, such a run stops
+    at its first model call with every product left "Didn't finish", so it
+    costs nothing.
+  - Nothing is saved, but a run with a key still costs money.
 - There's no demo mode, so saved report pages can't be checked without real
   data. Say so instead of guessing.
 
@@ -673,7 +680,9 @@ What exists, with known gaps. Slugs are the product page paths.
   tested) and `/dashboard/rubric` (the playbook).
 - **Landing page** (`/`): hero with a live dropzone and the report mock, the
   model's track record, the deck-feedback pitch (`PitchPerspective`), and the
-  closing call-to-action.
+  closing call-to-action. Each section, and the footer, sits on its own solid
+  sheet (`bg-sheet`) inset over the dot grid like the hero card; the layout
+  rule is the comment at the top of `app/(marketing)/page.tsx`.
 - **Dev only:** a cost sidebar with per-stage cost during a live run.
 
 Not built: rerunning a single product, saved usage or cost history, a demo

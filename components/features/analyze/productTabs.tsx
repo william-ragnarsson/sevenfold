@@ -188,9 +188,9 @@ export const PRODUCT_SLUGS = PRODUCT_PAGES.map((p) => p.slug).filter((slug) => s
 /** How each status looks: a dot colour and a word for screen readers and pills. */
 export const STATUS_META: Record<TabStatus, { label: string; dot: string; pill: string }> = {
   ready: { label: "Ready", dot: "bg-accent-bright", pill: "bg-accent/10 text-accent" },
-  running: { label: "Running", dot: "bg-amber-400 animate-pulse", pill: "bg-amber-500/10 text-amber-700" },
-  failed: { label: "Didn't finish", dot: "bg-red-400", pill: "bg-red-500/10 text-red-700" },
-  empty: { label: "Not in this report", dot: "bg-white/25", pill: "bg-ink/5 text-muted" },
+  running: { label: "Running", dot: "bg-amber-500 animate-pulse", pill: "bg-amber-500/10 text-amber-700" },
+  failed: { label: "Didn't finish", dot: "bg-red-500", pill: "bg-red-500/10 text-red-700" },
+  empty: { label: "Not in this report", dot: "bg-ink/20", pill: "bg-ink/5 text-muted" },
 };
 
 /** One line icon per product page, in `currentColor`. */
