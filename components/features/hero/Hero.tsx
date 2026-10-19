@@ -18,8 +18,9 @@ const stats: { value: string; label: string; href?: string }[] = [
   { value: "Free account", label: "Sign up in seconds, no card needed" },
 ];
 
-/** The words that cycle through the headline — each one is something the engine scores. */
-const SUBJECTS = ["deck", "team", "market", "traction", "founders"];
+/** What the headline offers to fast-track. "deck screening" goes first, so the
+ *  first frame (and the share-image screenshot) says it's for pitch decks. */
+const SUBJECTS = ["deck screening", "due diligence", "market research", "deal flow"];
 
 export default function Hero() {
   return (
@@ -36,18 +37,17 @@ export default function Hero() {
 
       <div className="relative grid flex-1 items-center gap-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
         {/* A size container, so the headline can scale to its column's width
-            (cqw) rather than the viewport's: each of its three lines has to
+            (cqw) rather than the viewport's: each of its two lines has to
             fit on one line at every breakpoint, including the widest rotating
-            word ("Have your founders" is ~9em), so RotatingWord's width change
-            never re-wraps anything. Below lg the report mock is
-            hidden, so the headline and launcher centre in the card. */}
+            phrase, so RotatingWord's width change never re-wraps anything.
+            Below lg the report mock is hidden, so the headline and launcher
+            centre in the card. */}
         <div className="@container text-center lg:text-left">
           <h1 className="fade-up text-[length:clamp(1.75rem,10.8cqw,5.5rem)] font-bold leading-[1.02] tracking-[-0.035em] text-white">
-            Have your <RotatingWord words={SUBJECTS} className="text-accent-bright" />
+            Fast-track your
             <br />
-            reviewed by a VC.
-            <br />
-            <span className="font-serif font-normal italic">Before</span> you pitch.
+            <RotatingWord words={SUBJECTS} className="text-accent-bright" />
+            <span className="text-accent-bright">.</span>
           </h1>
 
           <div className="fade-up mx-auto mt-14 max-w-xl lg:mx-0 lg:mt-20" style={{ animationDelay: "0.12s" }}>

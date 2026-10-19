@@ -26,6 +26,12 @@ export interface ReportEnv {
   slideHref: (slide: number) => string;
   /** Editing the memo, where it can be edited (see `ReportProvider`). */
   memo?: { edit: (edit: MemoEdit) => void; saveStatus: SaveStatus };
+  /**
+   * The page's right-hand column (`useAnalysisAside`), for a section's own
+   * sidebar: the Deck page puts its slide rail there. It shows from `lg` up,
+   * so a section keeps its own copy inline below that. Null on the full report.
+   */
+  aside: HTMLElement | null;
 }
 
 /**
@@ -95,6 +101,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         active={active}
         pdf={env.pdf}
         openSlide={env.slide}
+        sidebar={env.aside}
       />
     ),
   },

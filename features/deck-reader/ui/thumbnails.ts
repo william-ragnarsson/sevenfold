@@ -2,12 +2,15 @@ import type { PDFDocumentProxy } from "unpdf/pdfjs";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
 
 /**
- * Renders a deck's pages to small images in the browser, so the Deck section
- * can show the real slides without the server storing or sending any images.
+ * Renders a deck's pages to images in the browser, so the Deck section can show
+ * the real slides without the server storing or sending any images. Every page
+ * is drawn small, for the thumbnail rail, and the slide being looked at is also
+ * drawn full size when asked for (`requestSlide`).
  *
  * pdf.js comes from `unpdf/pdfjs` (already a dependency; its worker is bundled
  * in) and is imported lazily, so it only downloads when a deck is shown. Pages
- * render one at a time, yielding between them, into object URLs.
+ * render one at a time, yielding between them, into object URLs. A full-size
+ * request goes ahead of the small pages still to draw.
  *
  * This is a small external store keyed by deck hash: `useDeckThumbnails` reads
  * it with `useSyncExternalStore`, and re-opening a report reuses the images
@@ -24,24 +27,40 @@ export interface DeckThumbnails {
   aspect: number | null;
   /** Object URL per page (index 0 is page 1). A gap means not rendered, or it failed. */
   urls: readonly (string | undefined)[];
+  /** Full-size object URLs by page number, for the pages asked for lately. */
+  large: Readonly<Record<number, string>>;
 }
 
-export const NO_THUMBNAILS: DeckThumbnails = { status: "idle", pageCount: null, aspect: null, urls: [] };
+export const NO_THUMBNAILS: DeckThumbnails = { status: "idle", pageCount: null, aspect: null, urls: [], large: {} };
 
 /**
- * Page image width in CSS pixels; scaled by the screen's pixel ratio, up to 2x.
- * The Deck section shows the slide in a 15rem (240px) column, so nothing is
- * drawn bigger than that.
+ * Image widths in CSS pixels; scaled by the screen's pixel ratio, up to 2x.
+ * Thumbnails are drawn for the rail, about 10rem wide, and big enough to stand
+ * in for the big slide while its own image draws. Full-size pages are for the
+ * big slide, which is under 900px wide at the dashboard's widest.
  */
 const THUMB_WIDTH = 240;
+const SLIDE_WIDTH = 960;
 /** Decks kept in memory. Each holds an open PDF plus its page images. */
 const MAX_DECKS = 3;
+/** Full-size pages kept per deck. Older ones are released; asking again redraws them. */
+const MAX_LARGE = 8;
 
 interface Entry {
   snapshot: DeckThumbnails;
   listeners: Set<() => void>;
   doc: Promise<PDFDocumentProxy>;
+  /** Pages in the PDF, once it's open. */
+  pages: number | null;
+  /** The next small page to draw, 1-based. */
+  nextThumb: number;
+  /** The page last asked for at full size, until its turn comes. Newer asks replace it. */
+  wanted: number | null;
+  pumping: boolean;
+  /** Thumbnail object URLs. */
   objectUrls: string[];
+  /** Full-size object URLs by page, least recently asked for first. */
+  largeUrls: Map<number, string>;
   released: boolean;
   lastUsed: number;
 }
@@ -91,7 +110,7 @@ export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, cssW
   }
 }
 
-async function renderAll(entry: Entry) {
+async function start(entry: Entry) {
   let doc: PDFDocumentProxy;
   try {
     doc = await entry.doc;
@@ -102,33 +121,80 @@ async function renderAll(entry: Entry) {
   }
   if (entry.released) return;
 
+  entry.pages = doc.numPages;
   publish(entry, { ...entry.snapshot, pageCount: doc.numPages, urls: Array.from({ length: doc.numPages }, () => undefined) });
+  await pump(entry, doc);
+}
 
-  for (let n = 1; n <= doc.numPages; n++) {
-    if (entry.released) return;
-    try {
-      const { blob, aspect } = await renderPage(doc, n, THUMB_WIDTH);
-      if (entry.released) return;
-      const url = URL.createObjectURL(blob);
-      entry.objectUrls.push(url);
-      const urls = entry.snapshot.urls.slice();
-      urls[n - 1] = url;
-      publish(entry, { ...entry.snapshot, aspect: entry.snapshot.aspect ?? aspect, urls });
-    } catch (err) {
-      // One bad page shouldn't cost the rest; its tile falls back to a number.
-      if (entry.released) return;
-      console.warn(`[deck] thumbnail for page ${n} failed:`, err);
-    }
-    await yieldToMain();
+/** Draw one page full size and keep it, releasing the least recently asked for past `MAX_LARGE`. */
+async function drawLarge(entry: Entry, doc: PDFDocumentProxy, n: number) {
+  const { blob, aspect } = await renderPage(doc, n, SLIDE_WIDTH);
+  if (entry.released) return;
+  entry.largeUrls.set(n, URL.createObjectURL(blob));
+  for (const [page, url] of entry.largeUrls) {
+    if (entry.largeUrls.size <= MAX_LARGE) break;
+    URL.revokeObjectURL(url);
+    entry.largeUrls.delete(page);
   }
+  publish(entry, { ...entry.snapshot, aspect: entry.snapshot.aspect ?? aspect, large: Object.fromEntries(entry.largeUrls) });
+}
 
-  if (!entry.released) publish(entry, { ...entry.snapshot, status: "ready" });
+async function drawThumb(entry: Entry, doc: PDFDocumentProxy, n: number) {
+  const { blob, aspect } = await renderPage(doc, n, THUMB_WIDTH);
+  if (entry.released) return;
+  const url = URL.createObjectURL(blob);
+  entry.objectUrls.push(url);
+  const urls = entry.snapshot.urls.slice();
+  urls[n - 1] = url;
+  publish(entry, { ...entry.snapshot, aspect: entry.snapshot.aspect ?? aspect, urls });
+}
+
+/**
+ * Draws pages one at a time until there's nothing left to draw: the page
+ * wanted full size first, then the next thumbnail. Runs once per deck at a
+ * time; `requestSlide` restarts it after the thumbnails are done.
+ */
+async function pump(entry: Entry, doc: PDFDocumentProxy) {
+  if (entry.pumping) return;
+  entry.pumping = true;
+  try {
+    while (!entry.released) {
+      const large = entry.wanted;
+      entry.wanted = null;
+      if (large !== null) {
+        if (entry.largeUrls.has(large)) continue;
+        try {
+          await drawLarge(entry, doc, large);
+        } catch (err) {
+          // The rail's thumbnail stays in its place.
+          if (entry.released) return;
+          console.warn(`[deck] full-size page ${large} failed:`, err);
+        }
+      } else if (entry.nextThumb <= doc.numPages) {
+        const n = entry.nextThumb++;
+        try {
+          await drawThumb(entry, doc, n);
+        } catch (err) {
+          // One bad page shouldn't cost the rest; its tile falls back to a number.
+          if (entry.released) return;
+          console.warn(`[deck] thumbnail for page ${n} failed:`, err);
+        }
+        if (entry.nextThumb > doc.numPages && !entry.released) publish(entry, { ...entry.snapshot, status: "ready" });
+      } else {
+        return;
+      }
+      await yieldToMain();
+    }
+  } finally {
+    entry.pumping = false;
+  }
 }
 
 function release(key: string, entry: Entry) {
   entry.released = true;
   decks.delete(key);
   for (const url of entry.objectUrls) URL.revokeObjectURL(url);
+  for (const url of entry.largeUrls.values()) URL.revokeObjectURL(url);
   entry.doc.then((doc) => doc.destroy()).catch(() => {});
 }
 
@@ -148,17 +214,22 @@ function ensure(source: PdfSource): Entry {
   let entry = decks.get(source.key);
   if (!entry) {
     const doc = openDocument(source);
-    doc.catch(() => {}); // reported by renderAll
+    doc.catch(() => {}); // reported by start
     entry = {
       snapshot: { ...NO_THUMBNAILS, status: "loading" },
       listeners: new Set(),
       doc,
+      pages: null,
+      nextThumb: 1,
+      wanted: null,
+      pumping: false,
       objectUrls: [],
+      largeUrls: new Map(),
       released: false,
       lastUsed: Date.now(),
     };
     decks.set(source.key, entry);
-    void renderAll(entry);
+    void start(entry);
     trim();
   }
   entry.lastUsed = Date.now();
@@ -174,6 +245,26 @@ export function subscribeThumbnails(source: PdfSource, listener: () => void): ()
     entry.lastUsed = Date.now();
     trim();
   };
+}
+
+/**
+ * Draw page `n` full size (if it isn't already), ahead of any thumbnails still
+ * to come. It lands in the snapshot's `large`. A newer ask replaces one that
+ * hasn't started yet, so a stage moving quickly only ever waits on one page.
+ */
+export function requestSlide(source: PdfSource, n: number): void {
+  const entry = ensure(source);
+  const kept = entry.largeUrls.get(n);
+  if (kept) {
+    // Most recently asked for goes last, so it's released last.
+    entry.largeUrls.delete(n);
+    entry.largeUrls.set(n, kept);
+    return;
+  }
+  if (entry.pages !== null && (n < 1 || n > entry.pages)) return;
+  entry.wanted = n;
+  // Before the PDF is open, `start` picks this up when it begins.
+  if (entry.pages !== null) void entry.doc.then((doc) => pump(entry, doc));
 }
 
 export function getThumbnails(key: string): DeckThumbnails {

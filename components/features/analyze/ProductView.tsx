@@ -3,7 +3,7 @@
 import Link from "next/link";
 import ReportView from "./ReportView";
 import { REPORT_SECTIONS, type ReportEnv } from "./reportSections";
-import { useAnalysisScroll } from "./AnalysisFrame";
+import { useAnalysisAside, useAnalysisScroll } from "./AnalysisFrame";
 import { useReport } from "./ReportProvider";
 import { PRODUCT_TABS, tabAbsent, tabStatus } from "./productTabs";
 import { analysisPath, deckSlidePath } from "@/lib/routes";
@@ -24,15 +24,18 @@ export default function ProductView({
 }) {
   const report = useReport();
   const scrollRef = useAnalysisScroll();
+  const aside = useAnalysisAside();
   // The frame shows the loading and missing states.
   if (!report?.state) return null;
   const { id, state, active, pdf, failure, canEdit, editMemo, saveStatus } = report;
   const tab = PRODUCT_TABS[slug];
+  // The full report keeps every section in its column, the slide rail included.
   const env: ReportEnv = {
     pdf,
     slide,
     slideHref: (n) => deckSlidePath(id, n),
     memo: canEdit ? { edit: editMemo, saveStatus } : undefined,
+    aside: tab.sections === "all" ? null : aside,
   };
 
   if (tab.sections === "all") {

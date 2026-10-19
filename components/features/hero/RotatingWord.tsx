@@ -58,12 +58,13 @@ export default function RotatingWord({ words, intervalMs = 2400, className = "" 
         aria-hidden
         style={{ width }}
         // `overflow-hidden` clips the incoming word's slide-up and the hidden
-        // longer words. It also makes this box align by its bottom edge rather
-        // than its baseline, so there's no vertical padding: with padding at
-        // zero its box matches the line box exactly and the word sits on the
-        // baseline with the rest of the sentence. (The clip means a word with a
-        // descender would lose its tail — the current list has none.)
-        className="inline-grid overflow-hidden align-bottom transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        // longer words. It also makes this box align by its bottom margin edge
+        // rather than its baseline, so that edge has to land where the line
+        // box's bottom is for the word to sit on the baseline with the rest of
+        // the sentence. The bottom padding gives descenders (g, y, p) room
+        // inside the clip, and the matching negative margin cancels it, so the
+        // margin box still matches the line box exactly.
+        className="-mb-[0.25em] inline-grid overflow-hidden pb-[0.25em] align-bottom transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
       >
         {words.map((word, i) => (
           <span
