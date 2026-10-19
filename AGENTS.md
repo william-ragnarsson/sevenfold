@@ -70,7 +70,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `features/<product>/` | One folder per product: its types, form slice, live state, prompts, parser, pipeline stage and UI. Rules in `features/README.md` |
 | `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
 | `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), and the browser's NDJSON reader (`stream.ts`, `readProgressStream`) |
-| `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, so anything else a list row or dashboard metric shows must be added there as a jsonb path |
+| `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
 | `lib/llm/` | Provider adapters (`gemini.ts`, `claude.ts`) and `pricing.ts` |
 | `lib/config.ts` | Almost every env var, each read through a getter: model per stage, thinking per stage, token and search budgets, Supabase keys. Exceptions: `NEXT_PUBLIC_SITE_URL` is read directly in `app/layout.tsx` and `lib/mcp/server.ts`, and `proxy.ts` reads the `NEXT_PUBLIC_SUPABASE_*` vars itself |
 | `lib/playbook/load.ts` | `loadPlaybook()`: reads `docs/playbook.md` from disk at run time, once per process |
@@ -79,12 +79,12 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/invest/` | The verdict's ONNX model (`model.onnx`, `model.ts`) and the numbers behind `/dashboard/model` |
 | `lib/products.ts` | The pages an analysis has (slug, label, description), in sidebar order |
 | `lib/routes.ts` | Page paths and page lists only: `ROUTES`, `analysisPath`, `deckSlidePath`, `signInPath`, `safeNext`, `isDashboardPath` (what `proxy.ts` gates), `DASHBOARD_PAGES` (the sidebar's dashboard links), `PRODUCTS` (the nav bar's Products menu), and the slide param helpers. API, `/auth/*` and `/mcp` paths are written inline where they're used, and `supabase/templates/*.html` hardcode `/auth/confirm`, `/dashboard` and `/dashboard/account/password` |
-| `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR |
+| `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR. `coverPage` is the page its card shows (2, since page 1 is a laptop mockup) |
 | `lib/supabase/` | Browser, server, admin and bearer-token clients, plus row types |
-| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `AnalysisLauncher` (every dropzone), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `DashboardHome` (dropzone, five recent cards, metrics), `RecentAnalyses` (the full list with delete and clear all, on `/dashboard/analyses` and `/dashboard/account`), `AnalysisWorkspace` (the `/dashboard/analyses` body) |
+| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
 | `components/app-shell/` | Dashboard layout and sidebar. The sidebar swaps to an analysis's tabs when one is open |
 | `components/features/{auth,hero,landing,model}/` | Sign-in and accounts, the landing page, and the `/dashboard/model` explainer |
-| `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`; `Card`, `Dropzone`). The only components a product's `ui/` may import |
+| `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`; `Card`, `Dropzone`, whose `deckFileError` is the PDF type and size check `NewAnalysisActions` reuses). The only components a product's `ui/` may import |
 | `components/layout/` | Marketing shell, nav bar, footer |
 | `docs/playbook.md` | The VC rubric. **Runtime prompt input**: every stage sends it, and `/dashboard/rubric` renders it. Editing it changes analysis output |
 | `supabase/migrations/`, `supabase/templates/` | SQL migrations; auth email templates |
@@ -98,12 +98,12 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/sign-in` | Google or email/password |
 | `/oauth/consent` | Consent screen when Claude connects over MCP |
 | `/auth/callback`, `/auth/confirm` | OAuth code exchange; email links |
-| `/dashboard` | Dropzone (plus the legacy import prompt), the five most recent analyses as cards, and "at a glance" metrics |
-| `/dashboard/analyses` | A dropzone (plus the legacy import prompt), then every analysis, each deletable, plus Clear all |
+| `/dashboard` | New analysis and sample buttons in the header (a PDF dropped anywhere on the page runs too), the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
+| `/dashboard/analyses` | The same header buttons and the legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
 | `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
 | `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. Research has no page: its Sources close the memo page. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
-| `/dashboard/account` | Profile, password link, data export, the analyses list, account deletion |
+| `/dashboard/account` | Profile, password link, data export, account deletion |
 | `/dashboard/account/password` | Set or change the password |
 | `/api/analyze` | POST, NDJSON stream. Needs an account when Supabase is configured |
 | `/api/account/export`, `/api/account/delete` | Account data |
@@ -125,8 +125,11 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 
 ### How a run works
 
-1. The dropzone (`AnalysisLauncher`) calls `AnalysisProvider.start` with the
-   file. The sample sticker calls `startSample`.
+1. The landing page's dropzones (`AnalysisLauncher`) and the dashboard pages'
+   New analysis button and page-wide drop target (`NewAnalysisActions`) call
+   `AnalysisProvider.start` with the file. The sample sticker and the "Try the
+   sample deck" button call `startSample`. `NewAnalysisActions` turns itself
+   off while a run is live, since a second `start` aborts the first.
    - Signed out: the deck is stashed in IndexedDB and the user is sent to
      sign in. `ResumeStashedDeck` picks it up afterwards.
    - Otherwise: it navigates to `/dashboard/analyses/<id>`. If that deck
@@ -623,7 +626,7 @@ What exists, with known gaps. Slugs are the product page paths.
 
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
-| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR) and shows each slide's image beside its text. For each slide, lists the memo fields taken from it (deck-sourced fields only). Opens a given slide with `?slide=N` | MCP runs have no stored PDF, so no slide images, and the page doesn't say why. Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
+| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR) and shows each slide's image beside its text. For each slide, lists the memo fields taken from it (deck-sourced fields only). Opens a given slide with `?slide=N`. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images or cover (their cards show the name's initial), and the page doesn't say why. A cover that fails to draw isn't retried until a reload. Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
 | **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source. The page ends with research's Sources | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
 | **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
@@ -636,13 +639,16 @@ What exists, with known gaps. Slugs are the product page paths.
 ### Platform
 
 - **Dashboard** (`/dashboard`):
-  - dropzone and sample deck
-  - five recent analyses as cards
+  - New analysis (opens the file picker and runs the PDF picked), the sample
+    deck, and a PDF dropped anywhere on the page
   - metrics: decks analysed, last 30 days, recommended (invest calls), and
     average score (the invest model's score out of 100, over the decks it
     scored)
-- **Analyses list** (`/dashboard/analyses`): a dropzone, then every analysis,
-  each deletable along with its stored PDF, plus clear all.
+  - six recent analyses as cards, each with its deck's cover
+- **Analyses list** (`/dashboard/analyses`): the same ways to start a run,
+  then every analysis as cover cards or a list, each deletable along with its
+  stored PDF and cached cover, plus clear all. Neither delete nor clear all
+  asks to confirm.
 - **Inside an analysis:**
   - Each page is a sidebar tab with a status dot (verdict, scorecard and
     feedback share the Results tab, and research shows on Memo):

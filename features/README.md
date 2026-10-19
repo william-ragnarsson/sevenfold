@@ -38,8 +38,8 @@ and research has none: its Sources close the memo page
 
 | Path | What's on it |
 | --- | --- |
-| `/dashboard` | The dropzone, the last five analyses as cards, the account's numbers |
-| `/dashboard/analyses` | Every analysis on the account, and the dropzone |
+| `/dashboard` | The New analysis button, the account's numbers, the last six analyses as cards with their decks' covers |
+| `/dashboard/analyses` | The New analysis button, then every analysis on the account as cards or a list |
 | `/dashboard/analyses/<id>` | The overview: the call, and one card per page saying how far it got |
 | `/dashboard/analyses/<id>/<slug>` | One page: `deck`, `memo` (the memo, then research's Sources), `founders`, `landscape`, `results` (the verdict, then the scorecard, then the feedback), or `report` (everything) |
 

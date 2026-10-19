@@ -6,10 +6,10 @@ import { useAnalysis } from "./AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { getAnalysis, type AnalysisRecord } from "@/lib/analyses/store";
 import { isStalled, STALLED_MESSAGE } from "@/lib/analyses/status";
-import { pdfFromStorage, pdfFromUrl, type PdfSource } from "@/lib/analyses/pdf-source";
+import type { PdfSource } from "@/lib/analyses/pdf-source";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
 import { analysisIdOf } from "@/lib/routes";
-import { getSampleDeck } from "@/lib/samples/airbnb";
+import { savedDeckSource } from "./deckSource";
 
 /** How often a report whose run is still going is re-read. */
 const POLL_MS = 4000;
@@ -127,9 +127,7 @@ export default function ReportProvider({ children }: { children: ReactNode }) {
   const pdf = useMemo<PdfSource | null>(() => {
     if (!id) return null;
     if (localDeck?.key === id) return localDeck;
-    const sample = getSampleDeck(id);
-    if (sample) return pdfFromUrl(sample.pdfPath, id);
-    return deckPath ? pdfFromStorage(deckPath, id) : null;
+    return savedDeckSource(id, deckPath);
   }, [id, localDeck, deckPath]);
   const failure = isLive
     ? status === "error"
