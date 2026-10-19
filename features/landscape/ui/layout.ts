@@ -8,7 +8,9 @@
  * Everything is in percent of the grid (0–100 on both axes). The gap is the
  * room one logo plus its name needs, so an overlap is measured as an ellipse rather
  * than a circle: names are wider than they are tall. Deterministic: the same
- * input always lays out the same way, on the server and in the browser.
+ * input always lays out the same way, on the server and in the browser. The
+ * result is rounded, because Node and the browser can disagree on the last
+ * digit of `Math.hypot`, and a different style string breaks hydration.
  */
 
 export interface Point {
@@ -22,18 +24,24 @@ export interface Point {
  * square) grid needs a bigger share of its width per point than the wide one.
  */
 export const GAPS = {
-  narrow: { x: 24, y: 19 },
-  wide: { x: 15, y: 15 },
+  narrow: { x: 24, y: 17 },
+  wide: { x: 18, y: 13 },
 } satisfies Record<string, Point>;
-/** Keep logos clear of the edges, where they'd clip and hide the axis labels. */
-const MIN = 7;
+/**
+ * Keep logos clear of the edges, where they'd clip. The bottom margin is
+ * wider because each name hangs under its logo, and would otherwise run past
+ * the plot into the axis labels.
+ */
+const MIN = { x: 7, y: 11 };
 const MAX = 93;
 const ITERATIONS = 40;
 
-const clamp = (n: number) => Math.min(MAX, Math.max(MIN, n));
+const clampX = (n: number) => Math.min(MAX, Math.max(MIN.x, n));
+const clampY = (n: number) => Math.min(MAX, Math.max(MIN.y, n));
+const round = (n: number) => Math.round(n * 100) / 100;
 
 export function spreadPoints(points: Point[], gap: Point = GAPS.wide): Point[] {
-  const out = points.map((p) => ({ x: clamp(p.x), y: clamp(p.y) }));
+  const out = points.map((p) => ({ x: clampX(p.x), y: clampY(p.y) }));
 
   for (let iter = 0; iter < ITERATIONS; iter++) {
     let moved = false;
@@ -52,12 +60,12 @@ export function spreadPoints(points: Point[], gap: Point = GAPS.wide): Point[] {
         const uy = dist < 1e-6 ? Math.sin(angle) : dy / dist;
         // Each point moves half the overlap, damped so the layout settles.
         const push = ((1 - dist) / 2) * 0.6;
-        out[i] = { x: clamp(out[i].x - ux * push * gap.x), y: clamp(out[i].y - uy * push * gap.y) };
-        out[j] = { x: clamp(out[j].x + ux * push * gap.x), y: clamp(out[j].y + uy * push * gap.y) };
+        out[i] = { x: clampX(out[i].x - ux * push * gap.x), y: clampY(out[i].y - uy * push * gap.y) };
+        out[j] = { x: clampX(out[j].x + ux * push * gap.x), y: clampY(out[j].y + uy * push * gap.y) };
         moved = true;
       }
     }
     if (!moved) break;
   }
-  return out;
+  return out.map((p) => ({ x: round(p.x), y: round(p.y) }));
 }
