@@ -16,20 +16,21 @@ import ProductIcon from "@/components/layout/ProductIcon";
 import { productPage, productSlugOf } from "@/lib/products";
 import { analysisPath, DASHBOARD_PAGES, ROUTES } from "@/lib/routes";
 
-/** A quiet row that turns white on the page you're on. */
+/** A quiet row that lifts out as a white card on the page you're on. */
 const ITEM =
-  "mx-3 flex gap-2.5 rounded-lg px-3 text-sm leading-[1.55] transition-colors focus-visible:outline-2 focus-visible:outline-accent-bright ";
-const ITEM_ON = "bg-white/10 font-semibold text-white";
-const ITEM_OFF = "text-on-ink hover:bg-white/[0.04] hover:text-white";
+  "mx-3 flex gap-2.5 rounded-lg px-3 text-sm leading-[1.55] transition-colors focus-visible:outline-2 focus-visible:outline-accent ";
+const SELECTED = "bg-white shadow-[0_1px_2px_rgba(20,19,15,0.08),0_0_0_1px_rgba(20,19,15,0.06)]";
+const ITEM_ON = SELECTED + " font-semibold text-ink";
+const ITEM_OFF = "text-ink/70 hover:bg-white/60 hover:text-ink";
 
 /**
- * The dashboard's sidebar: a dark 232px column — the same near-black as the
- * landing page's hero card — with the logo, the dashboard's pages, and who's
- * signed in at the bottom. Inside an analysis the pages give way to that
- * analysis's tabs: its overview, one per product with how far it got, and the
- * full report. AppShell puts it beside the page from `lg` up and in a drawer
- * below that; `onNavigate` lets the drawer close when a link is followed, even
- * one to the page you're already on.
+ * The dashboard's sidebar: a 232px column in the page's own paper, set off by
+ * a hairline rather than a colour of its own, with the logo, the dashboard's
+ * pages, and who's signed in at the bottom. Inside an analysis the pages give
+ * way to that analysis's tabs: its overview, one per product with how far it
+ * got, and the full report. AppShell puts it beside the page from `lg` up and
+ * in a drawer below that; `onNavigate` lets the drawer close when a link is
+ * followed, even one to the page you're already on.
  */
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -37,11 +38,11 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const report = useReport();
 
   return (
-    <div className="flex h-full w-[232px] flex-col overflow-y-auto bg-ink py-6">
+    <div className="flex h-full w-[232px] flex-col overflow-y-auto border-r border-ink/10 bg-paper py-6">
       <Link
         href={ROUTES.home}
         onClick={onNavigate}
-        className="group mx-6 mb-6 flex items-center gap-2 self-start whitespace-nowrap rounded-sm font-semibold tracking-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-bright"
+        className="group mx-6 mb-6 flex items-center gap-2 self-start whitespace-nowrap rounded-sm font-semibold tracking-tight text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Image src="/logo.png" alt="" width={28} height={28} className="rounded-md" />
         <span className="transition-opacity group-hover:opacity-70">SevenFold</span>
@@ -124,8 +125,8 @@ function AnalysisTabs({
   return (
     <>
       <div className="mx-6 mt-5 mb-2 min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-on-ink-muted">Analysis</p>
-        <p className="truncate text-sm font-semibold text-white" title={settled ? name : undefined}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink/60">Analysis</p>
+        <p className="truncate text-sm font-semibold text-ink" title={settled ? name : undefined}>
           {settled ? name : "Loading…"}
         </p>
       </div>
@@ -149,7 +150,7 @@ function AnalysisTabs({
           </SideLink>
         );
       })}
-      <div className="mx-6 my-2 border-t border-white/[0.08]" aria-hidden />
+      <div className="mx-6 my-2 border-t border-ink/10" aria-hidden />
       <SideLink href={analysisPath(id, "report")} active={current === "report"} onNavigate={onNavigate}>
         <ProductTabIcon slug="report" className="h-[18px] w-[18px] opacity-80" />
         {full.label}
@@ -202,7 +203,7 @@ function RunLink({ run, onNavigate }: { run: LiveRun; onNavigate?: () => void })
             {run.step}/{run.steps}
           </span>
         </span>
-        <span className="block truncate text-xs font-normal text-on-ink-muted">{run.label}…</span>
+        <span className="block truncate text-xs font-normal text-ink/60">{run.label}…</span>
       </span>
     </Link>
   );
@@ -210,7 +211,7 @@ function RunLink({ run, onNavigate }: { run: LiveRun; onNavigate?: () => void })
 
 function Avatar({ children }: { children: React.ReactNode }) {
   return (
-    <span className="grid h-[30px] w-[30px] shrink-0 place-items-center overflow-hidden rounded-full bg-white/10 text-[11px] font-semibold uppercase text-white">
+    <span className="grid h-[30px] w-[30px] shrink-0 place-items-center overflow-hidden rounded-full bg-ink/[0.08] text-[11px] font-semibold uppercase text-ink">
       {children}
     </span>
   );
@@ -232,12 +233,12 @@ function UserBlock({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
   const active = pathname.startsWith(ROUTES.account);
 
   return (
-    <div className="mt-auto flex flex-col gap-0.5 border-t border-white/[0.08] pt-4">
+    <div className="mt-auto flex flex-col gap-0.5 border-t border-ink/10 pt-4">
       <Link
         href={ROUTES.account}
         onClick={onNavigate}
         aria-current={active ? "page" : undefined}
-        className={ITEM + "items-center py-2 " + (active ? "bg-white/10" : "hover:bg-white/[0.04]")}
+        className={ITEM + "items-center py-2 " + (active ? SELECTED : "hover:bg-white/60")}
       >
         <Avatar>
           {avatarUrl ? (
@@ -250,10 +251,10 @@ function UserBlock({ pathname, onNavigate }: { pathname: string; onNavigate?: ()
           )}
         </Avatar>
         <span className="min-w-0">
-          <span className="block truncate text-[13px] font-semibold text-white">
+          <span className="block truncate text-[13px] font-semibold text-ink">
             {name || "Signed in"}
           </span>
-          <span className="block truncate text-xs text-on-ink-muted">
+          <span className="block truncate text-xs text-ink/60">
             {email && name !== email ? email : "Account"}
           </span>
         </span>
