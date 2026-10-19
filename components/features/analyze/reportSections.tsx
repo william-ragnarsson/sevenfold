@@ -20,6 +20,12 @@ export interface ReportEnv {
   slide: number | null;
   /** A link to one slide on this analysis's Deck page. */
   slideHref: (slide: number) => string;
+  /**
+   * The page's right-hand column (`useAnalysisAside`), for a section's own
+   * sidebar: the Deck page puts its slide rail there. It shows from `lg` up,
+   * so a section keeps its own copy inline below that. Null on the full report.
+   */
+  aside: HTMLElement | null;
 }
 
 /**
@@ -78,6 +84,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         active={active}
         pdf={env.pdf}
         openSlide={env.slide}
+        sidebar={env.aside}
       />
     ),
   },

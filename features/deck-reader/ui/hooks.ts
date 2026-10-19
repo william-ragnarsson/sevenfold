@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from "react";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
-import { NO_THUMBNAILS, getThumbnails, subscribeThumbnails, type DeckThumbnails } from "./thumbnails";
+import { NO_THUMBNAILS, getThumbnails, requestSlide, subscribeThumbnails, type DeckThumbnails } from "./thumbnails";
 
 /** The deck's page images as they render. Nothing loads while `enabled` is false. */
 export function useDeckThumbnails(source: PdfSource | null, enabled: boolean): DeckThumbnails {
@@ -11,6 +11,16 @@ export function useDeckThumbnails(source: PdfSource | null, enabled: boolean): D
   );
   const snapshot = () => (watched ? getThumbnails(watched.key) : NO_THUMBNAILS);
   return useSyncExternalStore(subscribe, snapshot, () => NO_THUMBNAILS);
+}
+
+/**
+ * Has page `n` drawn full size while it's the one shown; it lands in
+ * `useDeckThumbnails`'s `large`. Nothing loads while `enabled` is false.
+ */
+export function useDeckSlide(source: PdfSource | null, n: number, enabled: boolean): void {
+  useEffect(() => {
+    if (enabled && source) requestSlide(source, n);
+  }, [source, n, enabled]);
 }
 
 /** True once the element has come within `margin` of the viewport, and stays true. */
