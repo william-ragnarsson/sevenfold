@@ -30,17 +30,18 @@ export interface AnalysisSummary {
   startedAt: number;
   /** The invest / pass call, once made; null before it, or on a run that never got there. */
   verdict: AnalysisState["verdict"];
+  /** The stored PDF in the `decks` bucket; null for MCP runs, legacy imports, or a failed upload. */
+  deckPath: string | null;
 }
 
 export interface AnalysisRecord extends AnalysisSummary {
   state: AnalysisState | null;
-  deckPath: string | null;
 }
 
 // The verdict is a few numbers — cheap to pull out of `state` for the list
 // views, unlike the rest of the report.
 const SUMMARY_COLUMNS =
-  "id, deck_hash, name, status, created_at, completed_at, error, started_at:state->startedAt, verdict:state->verdict";
+  "id, deck_hash, name, status, created_at, completed_at, error, deck_path, started_at:state->startedAt, verdict:state->verdict";
 
 interface SummaryRow {
   id: string;
@@ -50,6 +51,7 @@ interface SummaryRow {
   created_at: string;
   completed_at: string | null;
   error: string | null;
+  deck_path: string | null;
   started_at: number | null;
   verdict: AnalysisState["verdict"] | undefined;
 }
@@ -64,6 +66,7 @@ function toSummary(row: SummaryRow): AnalysisSummary {
     error: row.error,
     startedAt: runStartedAt(row.started_at, row.created_at),
     verdict: row.verdict ?? null,
+    deckPath: row.deck_path,
   };
 }
 
@@ -91,7 +94,7 @@ export async function getAnalysis(deckHash: string): Promise<AnalysisRecord | nu
 
   const { data, error } = await supabase
     .from("analyses")
-    .select(`${SUMMARY_COLUMNS}, state, deck_path`)
+    .select(`${SUMMARY_COLUMNS}, state`)
     .eq("deck_hash", deckHash)
     .maybeSingle();
 
@@ -101,11 +104,8 @@ export async function getAnalysis(deckHash: string): Promise<AnalysisRecord | nu
   }
   if (!data) return null;
 
-  const row = data as unknown as SummaryRow & {
-    state: AnalysisState | null;
-    deck_path: string | null;
-  };
-  return { ...toSummary(row), state: row.state, deckPath: row.deck_path };
+  const row = data as unknown as SummaryRow & { state: AnalysisState | null };
+  return { ...toSummary(row), state: row.state };
 }
 
 /**

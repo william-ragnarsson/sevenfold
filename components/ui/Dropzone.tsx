@@ -48,7 +48,14 @@ const TONES = {
 // Vercel's serverless functions cap request bodies at ~4.5MB regardless of
 // Next.js config, so we reject oversized files here instead of letting the
 // upload fail with an opaque 413 from the platform.
-const MAX_SIZE_MB = 4;
+export const MAX_SIZE_MB = 4;
+
+/** Why `file` can't be analysed, or null when it can. */
+export function deckFileError(file: File, accept = "application/pdf"): string | null {
+  if (accept && !file.type.match(accept.replace("*", ".*"))) return "Unsupported file type. Upload a PDF.";
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) return `File exceeds size limit: max ${MAX_SIZE_MB}MB.`;
+  return null;
+}
 
 /**
  * Generic file dropzone with a rounded SVG dashed border that hugs the
@@ -77,16 +84,9 @@ export default function Dropzone({
       setError("");
       return onFile(null);
     }
-    if (accept && !f.type.match(accept.replace("*", ".*"))) {
-      setError("Unsupported file type. Upload a PDF.");
-      return;
-    }
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`File exceeds size limit: max ${MAX_SIZE_MB}MB.`);
-      return;
-    }
-    setError("");
-    onFile(f);
+    const problem = deckFileError(f, accept);
+    setError(problem ?? "");
+    if (!problem) onFile(f);
   }
 
   return (

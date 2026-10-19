@@ -61,13 +61,13 @@ function yieldToMain(): Promise<void> {
   });
 }
 
-async function openDocument(source: PdfSource): Promise<PDFDocumentProxy> {
+export async function openDocument(source: PdfSource): Promise<PDFDocumentProxy> {
   const [bytes, { getDocument }] = await Promise.all([source.load(), import("unpdf/pdfjs")]);
   return getDocument({ data: new Uint8Array(bytes), isEvalSupported: false, useSystemFonts: true }).promise;
 }
 
 /** Draw one page at `cssWidth` and encode it. Returns the image and the page's aspect ratio. */
-async function renderPage(doc: PDFDocumentProxy, pageNumber: number, cssWidth: number) {
+export async function renderPage(doc: PDFDocumentProxy, pageNumber: number, cssWidth: number) {
   const page = await doc.getPage(pageNumber);
   const canvas = document.createElement("canvas");
   try {

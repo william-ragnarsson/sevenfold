@@ -26,10 +26,10 @@ export default function MarketingShell({ children }: { children: React.ReactNode
         {!isHome && <div aria-hidden className="h-20 shrink-0" />}
         {/* Pages set their own max-width. The trailing padding is for pages that
             end on bare paper and would otherwise run their last line into the
-            footer rule. The home page ends in a full-bleed band with generous
-            padding of its own, which butts straight up against the footer. */}
+            footer rule. The home page ends on a sheet whose own gutter spaces
+            it from the footer's. */}
         <main className={"flex-1 " + (isHome ? "" : "pb-24")}>{children}</main>
-        <Footer flush={isHome} />
+        <Footer sheet={isHome} />
       </div>
     </>
   );

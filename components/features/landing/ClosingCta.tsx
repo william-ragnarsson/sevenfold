@@ -12,9 +12,10 @@ import AnalysisLauncher from "@/components/features/analyze/AnalysisLauncher";
  * actually stop an upload (account, storage, scope) answered underneath where
  * they're asked.
  *
- * No container of its own. The full-bleed band in `app/page.tsx` sets it apart,
- * and this heading is the largest type on the page below the hero. A dark slab
- * down here reads as a broken copy of the hero, which is what it replaced.
+ * No container of its own. Its sheet in `app/(marketing)/page.tsx` sets it
+ * apart, and this heading is the largest type on the page below the hero. A
+ * dark slab down here reads as a broken copy of the hero, which is what it
+ * replaced.
  */
 
 /** All three are properties of the code, not promises: an account is free to
@@ -45,7 +46,7 @@ export default function ClosingCta() {
       </h2>
 
       {/* Two devices, and they depend on each other. `elevated` makes the
-          dropzone opaque and lifts it off the band, which is what the rest of
+          dropzone opaque and lifts it off the sheet, which is what the rest of
           the page uses to mean "this is the object". The bloom then reads as a
           halo around that panel. Behind the default translucent surface it read
           as a stain instead, which is why the earlier attempt at a glow alone
