@@ -36,8 +36,8 @@ Each analysis is a set of pages, one per product, under
 
 | Path | What's on it |
 | --- | --- |
-| `/dashboard` | The dropzone, the last five analyses as cards, the account's numbers |
-| `/dashboard/analyses` | Every analysis on the account, and the dropzone |
+| `/dashboard` | The New analysis button, the account's numbers, the last six analyses as cards with their decks' covers |
+| `/dashboard/analyses` | The New analysis button, then every analysis on the account as cards or a list |
 | `/dashboard/analyses/<id>` | The overview: the call, and one card per product saying how far it got |
 | `/dashboard/analyses/<id>/<slug>` | One product's page: `deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, or `report` (everything) |
 
