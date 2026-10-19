@@ -49,6 +49,8 @@ const nextConfig: NextConfig = {
       { source: "/model", destination: "/dashboard/model", permanent: false },
       { source: "/playbook", destination: "/dashboard/rubric", permanent: false },
       { source: "/account/:path*", destination: "/dashboard/account/:path*", permanent: false },
+      // Research lost its page: its searches and notes close the memo.
+      { source: "/dashboard/analyses/:id/research", destination: "/dashboard/analyses/:id/memo", permanent: false },
     ];
   },
 

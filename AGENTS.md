@@ -101,7 +101,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/dashboard` | Dropzone (plus the legacy import prompt), the five most recent analyses as cards, and "at a glance" metrics |
 | `/dashboard/analyses` | A dropzone (plus the legacy import prompt), then every analysis, each deletable, plus Clear all |
 | `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per product showing how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One product's page (`deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, `report`). The deck page takes `?slide=N` |
+| `/dashboard/analyses/<id>/<slug>` | One product's page (`deck`, `memo`, `founders`, `landscape`, `scorecard`, `feedback`, `report`). The deck page takes `?slide=N`. Research and verdict have no page: research's Sources close the memo page, and the verdict is on the scorecard page |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
 | `/dashboard/account` | Profile, password link, data export, the analyses list, account deletion |
 | `/dashboard/account/password` | Set or change the password |
@@ -119,7 +119,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
   keep their old id. The route doesn't validate it.
 - Old paths redirect (307) to their dashboard pages (`next.config.ts`):
   `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook` and
-  `/account/*`. Don't reuse them.
+  `/account/*`. `/dashboard/analyses/<id>/research` redirects to that
+  analysis's memo page. Don't reuse them.
 
 ### How a run works
 
@@ -613,9 +614,9 @@ What exists, with known gaps. Slugs are the product page paths.
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
 | **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR) and shows each slide's image beside its text. For each slide, lists the memo fields taken from it (deck-sourced fields only). Opens a given slide with `?slide=N` | MCP runs have no stored PDF, so no slide images, and the page doesn't say why. Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
-| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
+| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source. The page ends with research's Sources | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
-| **Research** (`research/`) | `research` | Web research aimed at the deck's gaps: the searches, the sources and the notes | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
+| **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three with why each competes. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
 | **Scorecard** (`scorecard/`) | `scorecard` | Six 1–5 ratings plus funding raised. The page also shows the verdict | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
 | **Feedback** (`feedback/`) | `feedback` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
@@ -633,13 +634,13 @@ What exists, with known gaps. Slugs are the product page paths.
 - **Analyses list** (`/dashboard/analyses`): a dropzone, then every analysis,
   each deletable along with its stored PDF, plus clear all.
 - **Inside an analysis:**
-  - Each product is a sidebar tab with a status dot:
+  - Each product page is a sidebar tab with a status dot:
     - ready
     - running
     - didn't finish: it failed, or the run stopped before reaching it
     - not in this report: an old report from before the product, or nothing
       was found
-  - The overview has one card per product.
+  - The overview has one card per product page.
   - Narrow screens get the tabs as pills.
 - **Live runs:**
   - Streamed over NDJSON with a phase stepper.

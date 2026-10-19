@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import VerdictPopup from "@/features/verdict/ui/VerdictPopup";
 import DeckFeedbackPanel, { type SlideHref } from "@/features/feedback/ui/DeckFeedbackPanel";
 import ScorecardPanel from "@/features/scorecard/ui/ScorecardPanel";
-import { ResearchFindings, WebSearch } from "@/features/research/ui/ResearchLog";
+import { ResearchSources } from "@/features/research/ui/ResearchLog";
 import MemoView, { type FieldRenderer } from "@/features/memo/ui/MemoView";
 import FoundersRows from "@/features/founders/ui/FoundersRows";
 import FoundersPanel from "@/features/founders/ui/FoundersPanel";
@@ -119,21 +119,17 @@ export const REPORT_SECTIONS: ReportSection[] = [
     ),
   },
   {
-    id: "findings",
-    label: "Research Findings",
-    available: (s, active) => active || !!s.notes,
-    render: (s, active) => <ResearchFindings state={s} active={active} />,
-  },
-  {
-    id: "search",
-    label: "Web Search",
-    available: (s, active) => active || s.searches.length > 0,
-    render: (s) => <WebSearch state={s} />,
-  },
-  {
     id: "document",
     label: "Document",
     available: () => true,
     render: (s, active) => <MemoView form={s.form} active={active} renderers={MEMO_RENDERERS} />,
+  },
+  {
+    // Research's searches and notes: where the memo's web answers came from,
+    // so they close the memo (and the report) like a bibliography.
+    id: "sources",
+    label: "Sources",
+    available: (s, active) => active || s.searches.length > 0 || !!s.notes,
+    render: (s, active) => <ResearchSources state={s} active={active} />,
   },
 ];

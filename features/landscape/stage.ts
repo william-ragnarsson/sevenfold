@@ -20,7 +20,7 @@ import {
  * research pass. Its searches go out as their own landscape-search/
  * landscape-source events, shown on the landscape card while it works; as
  * plain search/source events, interleaved with the main research pass, they'd
- * scramble the Web Search tab's query → sources grouping. Non-critical: a
+ * scramble the memo's Sources list (query → sources). Non-critical: a
  * failure is reported and swallowed, so a missing landscape never costs the
  * investor the rest of the report.
  */

@@ -2,7 +2,8 @@ import { ROUTES } from "./routes";
 
 /**
  * The pages an analysis has: one per product, in sidebar order, plus the whole
- * report on one page at the end. Each lives at
+ * report on one page at the end. Verdict shows on Scorecard and research on
+ * Memo, so neither has a page. Each lives at
  * `/dashboard/analyses/<id>/<slug>`; the analysis's overview is the bare
  * `/dashboard/analyses/<id>`.
  *
@@ -25,11 +26,6 @@ export const PRODUCT_PAGES = [
     slug: "founders",
     label: "Founders",
     description: "Who's building it, how they met, and who owns what.",
-  },
-  {
-    slug: "research",
-    label: "Research",
-    description: "What the web says about the gaps the deck left.",
   },
   {
     slug: "landscape",

@@ -83,12 +83,17 @@ export const PRODUCT_TABS: Record<ProductSlug, ProductTab> = {
     absent: (s) => s.deck === undefined && (stepDone(s, "extracting") || s.landscape === undefined),
   },
   memo: {
-    sections: ["document"],
+    // Research has no page of its own: its searches close the memo.
+    sections: ["document", "sources"],
     status: (s, active) =>
       active && !stepDone(s, "completing") ? "running" : memoFilled(s) > 0 ? "ready" : "empty",
     summary: (s) => {
       const filled = memoFilled(s);
-      return filled > 0 ? `${filled} of ${MEMO_TEXT_KEYS.length} fields filled` : null;
+      const parts = [
+        filled > 0 ? `${filled} of ${MEMO_TEXT_KEYS.length} fields filled` : null,
+        s.sourceCount > 0 ? plural(s.sourceCount, "web source") : null,
+      ];
+      return parts.filter(Boolean).join(" · ") || null;
     },
   },
   founders: {
@@ -99,19 +104,6 @@ export const PRODUCT_TABS: Record<ProductSlug, ProductTab> = {
       const n = s.form.founders.members.length;
       return n > 0 ? plural(n, "founder") : null;
     },
-  },
-  research: {
-    sections: ["findings", "search"],
-    status: (s, active) =>
-      active && !stepDone(s, "researching")
-        ? "running"
-        : s.notes || s.searches.length > 0
-          ? "ready"
-          : "empty",
-    summary: (s) =>
-      s.sourceCount > 0 || s.searches.length > 0
-        ? `${plural(s.sourceCount, "source")} · ${plural(s.searches.length, "search", "searches")}`
-        : null,
   },
   landscape: {
     sections: ["landscape"],
@@ -235,13 +227,6 @@ export function ProductTabIcon({ slug, className = "h-4 w-4" }: { slug: ProductS
           <path d="M3.5 20a5.5 5.5 0 0 1 11 0" />
           <circle cx="17" cy="9" r="2.5" />
           <path d="M16 14.2a4.5 4.5 0 0 1 5 4.8" />
-        </>
-      )}
-      {slug === "research" && (
-        <>
-          {/* A globe: the web. */}
-          <circle cx="12" cy="12" r="9" />
-          <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
         </>
       )}
       {slug === "landscape" && (

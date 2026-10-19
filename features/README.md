@@ -32,14 +32,16 @@ app/                    routes
 ## Pages
 
 Each analysis is a set of pages, one per product, under
-`/dashboard/analyses/<id>`:
+`/dashboard/analyses/<id>`. Verdict and research have none: the verdict shows
+on the scorecard page, and research's Sources close the memo page.
+`/dashboard/analyses/<id>/research` redirects to the memo page.
 
 | Path | What's on it |
 | --- | --- |
 | `/dashboard` | The dropzone, the last five analyses as cards, the account's numbers |
 | `/dashboard/analyses` | Every analysis on the account, and the dropzone |
 | `/dashboard/analyses/<id>` | The overview: the call, and one card per product saying how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One product's page: `deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, or `report` (everything) |
+| `/dashboard/analyses/<id>/<slug>` | One product's page: `deck`, `memo`, `founders`, `landscape`, `scorecard`, `feedback`, or `report` (everything) |
 
 Inside an analysis the sidebar swaps the dashboard's pages for the analysis's
 tabs, each with a status dot. The pieces:
