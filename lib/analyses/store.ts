@@ -108,6 +108,25 @@ export async function getAnalysis(deckHash: string): Promise<AnalysisRecord | nu
   return { ...toSummary(row), state: row.state };
 }
 
+/**
+ * The `startedAt` a saved analysis's run claimed its row with: null on rows
+ * from before claims, undefined when there's no such row. A run in this tab
+ * keeps its own `startedAt`, so an edit made after it finishes reads the row's.
+ */
+export async function getRunClaim(deckHash: string): Promise<number | null | undefined> {
+  const supabase = tryGetSupabaseBrowserClient();
+  if (!supabase) return undefined;
+
+  const { data, error } = await supabase
+    .from("analyses")
+    .select("started_at:state->startedAt")
+    .eq("deck_hash", deckHash)
+    .maybeSingle();
+  if (error || !data) return undefined;
+  const claim = (data as unknown as { started_at: unknown }).started_at;
+  return typeof claim === "number" ? claim : null;
+}
+
 export async function deleteAnalysis(rowId: string): Promise<void> {
   const supabase = tryGetSupabaseBrowserClient();
   if (!supabase) return;

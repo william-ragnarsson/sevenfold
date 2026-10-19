@@ -15,7 +15,15 @@ export interface ParsedField {
   slides?: number[];
 }
 
+/** The sources a model may claim. "personal" isn't one: only a person's edit sets it. */
 const VALID_SOURCES = new Set<FieldSource>(["deck", "web", "inferred", "unknown"]);
+
+/** Every field source, a model's or a person's. */
+export const FIELD_SOURCES: readonly FieldSource[] = ["deck", "web", "inferred", "unknown", "personal"];
+
+export function isFieldSource(v: unknown): v is FieldSource {
+  return typeof v === "string" && (FIELD_SOURCES as readonly string[]).includes(v);
+}
 
 /**
  * Confidence ranking of a field's source, highest first. "deck" and "web" are
@@ -24,8 +32,10 @@ const VALID_SOURCES = new Set<FieldSource>(["deck", "web", "inferred", "unknown"
  * later pass), so neither should be blocked from overwriting the other.
  * "inferred" is the model's own ungrounded reasoning, so it must not silently
  * downgrade an already-filled "deck"/"web" field (see `applyTextField`).
+ * "personal" is a person's own edit, which no model write may replace.
  */
 const SOURCE_PRIORITY: Record<FieldSource, number> = {
+  personal: 3,
   deck: 2,
   web: 2,
   inferred: 1,

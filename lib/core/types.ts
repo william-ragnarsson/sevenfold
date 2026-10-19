@@ -9,8 +9,11 @@ export interface Source {
   url: string;
 }
 
-/** Where a filled-in field value came from. */
-export type FieldSource = "deck" | "web" | "inferred" | "unknown";
+/**
+ * Where a filled-in field value came from. "personal" is a person's own edit
+ * in the report; models never send it.
+ */
+export type FieldSource = "deck" | "web" | "inferred" | "unknown" | "personal";
 
 /**
  * One text cell of the report. Every scalar field carries its value and where
