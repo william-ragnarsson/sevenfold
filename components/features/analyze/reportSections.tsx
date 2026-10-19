@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import VerdictPopup from "@/features/verdict/ui/VerdictPopup";
-import DeckFeedbackPanel, { type SlideHref } from "@/features/feedback/ui/DeckFeedbackPanel";
+import DeckFeedbackPanel from "@/features/feedback/ui/DeckFeedbackPanel";
 import ScorecardPanel from "@/features/scorecard/ui/ScorecardPanel";
 import { ResearchFindings, WebSearch } from "@/features/research/ui/ResearchLog";
 import MemoView, { type FieldRenderer } from "@/features/memo/ui/MemoView";
@@ -9,8 +9,12 @@ import FoundersPanel from "@/features/founders/ui/FoundersPanel";
 import DeckSection from "@/features/deck-reader/ui/DeckSection";
 import { deckTotal, isUnmapped } from "@/features/deck-reader/ui/selectors";
 import LandscapePanel from "@/features/landscape/ui/LandscapePanel";
+import type { SlideHref } from "@/components/report/SlideChips";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import type { MemoEdit } from "@/lib/diligence/edits";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
+import MemoToolbar from "./MemoToolbar";
+import type { SaveStatus } from "./ReportProvider";
 
 /** What a section may need beyond the analysis state. */
 export interface ReportEnv {
@@ -20,6 +24,8 @@ export interface ReportEnv {
   slide: number | null;
   /** A link to one slide on this analysis's Deck page. */
   slideHref: (slide: number) => string;
+  /** Editing the memo, where it can be edited (see `ReportProvider`). */
+  memo?: { edit: (edit: MemoEdit) => void; saveStatus: SaveStatus };
 }
 
 /**
@@ -42,11 +48,11 @@ export interface ReportSection {
 }
 
 /**
- * Links feedback items to the Deck page, for the slides it can show: none when
- * the deck wasn't split into pages (or the report predates the deck slice), and
- * none past its last page.
+ * Links slide numbers (feedback items', the memo's sources) to the Deck page,
+ * for the slides it can show: none when the deck wasn't split into pages (or
+ * the report predates the deck slice), and none past its last page.
  */
-function feedbackSlideHref(state: AnalysisState, env: ReportEnv): SlideHref | undefined {
+function slideHrefFor(state: AnalysisState, env: ReportEnv): SlideHref | undefined {
   const deck = state.deck;
   if (!deck || isUnmapped(deck)) return undefined;
   const total = deckTotal(deck);
@@ -54,9 +60,20 @@ function feedbackSlideHref(state: AnalysisState, env: ReportEnv): SlideHref | un
 }
 
 /** The memo's non-text fields, drawn by the products that own them. */
-const MEMO_RENDERERS: Partial<Record<"founders", FieldRenderer>> = {
-  founders: ({ form, active }) => <FoundersRows form={form} active={active} />,
-};
+function memoRenderers(state: AnalysisState, env: ReportEnv): Partial<Record<"founders", FieldRenderer>> {
+  const edit = env.memo?.edit;
+  return {
+    founders: ({ form, active }) => (
+      <FoundersRows
+        form={form}
+        active={active}
+        evidence={state.deck?.evidence.founders}
+        slideHref={slideHrefFor(state, env)}
+        onChange={edit && ((members) => edit({ kind: "founders", members }))}
+      />
+    ),
+  };
+}
 
 export const REPORT_SECTIONS: ReportSection[] = [
   {
@@ -87,14 +104,16 @@ export const REPORT_SECTIONS: ReportSection[] = [
     // The memo's founders rows, on their own; the full report has them in the memo.
     pageOnly: true,
     available: () => true,
-    render: (s, active) => <FoundersPanel form={s.form} active={active} />,
+    render: (s, active, env) => (
+      <FoundersPanel form={s.form} active={active} evidence={s.deck?.evidence} slideHref={slideHrefFor(s, env)} />
+    ),
   },
   {
     id: "feedback",
     label: "Deck feedback",
     available: (s, active) => active || s.deckFeedback.length > 0,
     render: (s, active, env) => (
-      <DeckFeedbackPanel items={s.deckFeedback} active={active} slideHref={feedbackSlideHref(s, env)} />
+      <DeckFeedbackPanel items={s.deckFeedback} active={active} slideHref={slideHrefFor(s, env)} />
     ),
   },
   {
@@ -134,6 +153,24 @@ export const REPORT_SECTIONS: ReportSection[] = [
     id: "document",
     label: "Document",
     available: () => true,
-    render: (s, active) => <MemoView form={s.form} active={active} renderers={MEMO_RENDERERS} />,
+    render: (s, active, env) => {
+      const edit = env.memo?.edit;
+      return (
+        <MemoView
+          form={s.form}
+          active={active}
+          renderers={memoRenderers(s, env)}
+          evidence={s.deck?.evidence}
+          slideHref={slideHrefFor(s, env)}
+          onEditField={
+            edit &&
+            ((key, { value, source }) =>
+              // "unknown" isn't offered: only an emptied cell gets it.
+              edit({ kind: "field", key, value, source: source === "unknown" ? undefined : source }))
+          }
+          toolbar={!active && <MemoToolbar state={s} saveStatus={env.memo?.saveStatus} />}
+        />
+      );
+    },
   },
 ];

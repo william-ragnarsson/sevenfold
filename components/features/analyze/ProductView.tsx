@@ -26,9 +26,14 @@ export default function ProductView({
   const scrollRef = useAnalysisScroll();
   // The frame shows the loading and missing states.
   if (!report?.state) return null;
-  const { id, state, active, pdf, failure } = report;
+  const { id, state, active, pdf, failure, canEdit, editMemo, saveStatus } = report;
   const tab = PRODUCT_TABS[slug];
-  const env: ReportEnv = { pdf, slide, slideHref: (n) => deckSlidePath(id, n) };
+  const env: ReportEnv = {
+    pdf,
+    slide,
+    slideHref: (n) => deckSlidePath(id, n),
+    memo: canEdit ? { edit: editMemo, saveStatus } : undefined,
+  };
 
   if (tab.sections === "all") {
     return <ReportView state={state} active={active} env={env} scrollRef={scrollRef} />;

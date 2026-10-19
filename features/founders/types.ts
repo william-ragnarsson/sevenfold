@@ -1,4 +1,4 @@
-import type { Field } from "@/lib/core/types";
+import type { Field, FieldSource } from "@/lib/core/types";
 
 /** One founder row in the cap-table section. */
 export interface Founder {
@@ -9,6 +9,11 @@ export interface Founder {
   commitment: string;
   /** Background bullet points. */
   background: string[];
+  /**
+   * Where this founder came from. Absent on reports saved before founders
+   * carried a source.
+   */
+  source?: FieldSource;
 }
 
 /** The founders and how the company is owned. */

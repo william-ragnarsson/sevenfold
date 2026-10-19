@@ -58,8 +58,9 @@ Old `/due-diligence/…` and `/dashboard/due-diligence/…` links redirect here
 (`next.config.ts`).
 
 `components/report/` holds the shared report primitives (`Row`, `Skeleton`,
-`SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`) and `components/ui/`
-the generic ones (`Card`, `Dropzone`). Products use both; neither knows any
+`SourceBadge`, `SourceLegend`, `SourcePicker`, `SourceRow`, `SlideChips`,
+`EditableText`, `SearchList`) and `components/ui/` the generic ones (`Card`,
+`Dropzone`). Products use both; neither knows any
 product.
 
 ## Inside a product
