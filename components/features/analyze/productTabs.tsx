@@ -120,36 +120,22 @@ export const PRODUCT_TABS: Record<ProductSlug, ProductTab> = {
     // Reports since keep `landscape: null` until it's mapped.
     absent: (s) => s.landscape === undefined,
   },
-  scorecard: {
-    sections: ["verdict", "scorecard"],
+  results: {
+    // The call first, then the ratings behind it, then what to fix in the deck.
+    sections: ["verdict", "scorecard", "feedback"],
     status: (s, active) => {
+      // Verdict is the last stage, so by then the feedback has all streamed in.
       if (s.verdict) return "ready";
       if (active) return "running";
-      return ratings(s).length > 0 ? "ready" : "empty";
+      return ratings(s).length > 0 || s.deckFeedback.length > 0 ? "ready" : "empty";
     },
     summary: (s) => {
       const scored = ratings(s);
       const avg = scored.length ? `avg ${(scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1)} / 5` : null;
       const call = s.verdict?.available ? (s.verdict.invest ? "Invest" : "Pass") : null;
-      return [call, avg].filter(Boolean).join(" · ") || null;
-    },
-  },
-  feedback: {
-    sections: ["feedback"],
-    // Items stream in one at a time, so it isn't done until the run is.
-    status: (s, active) => (active ? "running" : s.deckFeedback.length > 0 ? "ready" : "empty"),
-    summary: (s) => {
-      const count = (severity: string) => s.deckFeedback.filter((f) => f.severity === severity).length;
-      const parts = [
-        [count("critical"), "critical", "critical"],
-        [count("warning"), "warning", "warnings"],
-        [count("strength"), "strength", "strengths"],
-      ] as const;
-      const text = parts
-        .filter(([n]) => n > 0)
-        .map(([n, one, many]) => plural(n, one, many))
-        .join(" · ");
-      return text || null;
+      const critical = s.deckFeedback.filter((f) => f.severity === "critical").length;
+      const fixes = critical > 0 ? plural(critical, "critical", "critical") : null;
+      return [call, avg, fixes].filter(Boolean).join(" · ") || null;
     },
   },
   report: {
@@ -238,17 +224,10 @@ export function ProductTabIcon({ slug, className = "h-4 w-4" }: { slug: ProductS
           <circle cx="17" cy="15" r="1.5" />
         </>
       )}
-      {slug === "scorecard" && (
+      {slug === "results" && (
         <>
           {/* Bars of a rating. */}
           <path d="M5 20v-6M10 20V9M15 20v-8M20 20V5" />
-        </>
-      )}
-      {slug === "feedback" && (
-        <>
-          {/* A speech bubble. */}
-          <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.6A8 8 0 1 1 21 12Z" />
-          <path d="M9 11h6M9 14h4" />
         </>
       )}
       {slug === "report" && (
