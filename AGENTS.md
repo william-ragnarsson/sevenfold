@@ -100,8 +100,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/auth/callback`, `/auth/confirm` | OAuth code exchange; email links |
 | `/dashboard` | New analysis and sample buttons in the header (a PDF dropped anywhere on the page runs too), the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
 | `/dashboard/analyses` | The same header buttons and the legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
-| `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per product showing how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One product's page (`deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, `report`). The deck page takes `?slide=N` |
+| `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
+| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `research`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
 | `/dashboard/account` | Profile, password link, data export, account deletion |
 | `/dashboard/account/password` | Set or change the password |
@@ -118,8 +118,9 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
   trimmed deck text for MCP runs. Analyses imported from the old localStorage
   keep their old id. The route doesn't validate it.
 - Old paths redirect (307) to their dashboard pages (`next.config.ts`):
-  `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook` and
-  `/account/*`. Don't reuse them.
+  `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook`,
+  `/account/*`, and an analysis's `scorecard` and `feedback` pages (both go to
+  its `results` page). Don't reuse them.
 
 ### How a run works
 
@@ -422,12 +423,19 @@ command. Don't edit `.claude/launch.json` without asking the owner.
 - `/dashboard` is gated, and a browser agent can't sign in. Free to check:
   `/`, `/sign-in`, and the landing page's report mock.
 - With accounts off, the dashboard shell, `/dashboard/model` and
-  `/dashboard/rubric` render too.
-  - Accounts-off mode means Supabase env blanked:
-    `NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= npm run dev`.
-    This should work but hasn't been tried.
-  - It needs a launch entry the owner adds.
-  - Nothing is saved, but a run still costs money.
+  `/dashboard/rubric` render too, ungated, and the nav bar shows "Dashboard".
+  - Accounts-off mode means no Supabase env. A worktree with no `.env` runs in
+    it under the usual "Next.js dev server" config. Where `.env` is present,
+    blanking the vars
+    (`NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY= npm run dev`)
+    should do the same but hasn't been tried, and needs a launch entry the
+    owner adds.
+  - With no saved analyses, an analysis page shows only its missing state. A
+    run started in that tab shows the sidebar's product tabs and status dots
+    until a reload drops it. With no `GEMINI_API_KEY` either, such a run stops
+    at its first model call with every product left "Didn't finish", so it
+    costs nothing.
+  - Nothing is saved, but a run with a key still costs money.
 - There's no demo mode, so saved report pages can't be checked without real
   data. Say so instead of guessing.
 
@@ -557,7 +565,9 @@ but not all.
    - `ReportEnv` carries the PDF and slide links.
 10. **`lib/products.ts`:** add a `PRODUCT_PAGES` entry for the product's own
     page, before `report`. Array order is the order of the sidebar tabs and
-    the narrow-screen pills.
+    the narrow-screen pills. A product can share a page instead: verdict,
+    scorecard and feedback all sit on `results`, so a new product there only
+    adds its section id to that `PRODUCT_TABS` entry.
 11. **`components/features/analyze/productTabs.tsx`:**
     - Add a `PRODUCT_TABS` entry with sections, status, summary and `absent`.
     - Add an icon to `ProductTabIcon`. Nothing checks it, and a missing one
@@ -619,10 +629,10 @@ What exists, with known gaps. Slugs are the product page paths.
 | **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
 | **Research** (`research/`) | `research` | Web research aimed at the deck's gaps: the searches, the sources and the notes | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
-| **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three with why each competes. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
-| **Scorecard** (`scorecard/`) | `scorecard` | Six 1–5 ratings plus funding raised. The page also shows the verdict | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
-| **Feedback** (`feedback/`) | `feedback` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
-| **Verdict** (`verdict/`) | (on `scorecard`) | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
+| **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
+| **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
+| **Feedback** (`feedback/`) | `results` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
+| **Verdict** (`verdict/`) | `results` | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
 | **Full report** | `report` | Every section on one page, with a chapters nav | — |
 
 ### Platform
@@ -639,13 +649,14 @@ What exists, with known gaps. Slugs are the product page paths.
   stored PDF and cached cover, plus clear all. Neither delete nor clear all
   asks to confirm.
 - **Inside an analysis:**
-  - Each product is a sidebar tab with a status dot:
+  - Each page is a sidebar tab with a status dot (verdict, scorecard and
+    feedback share the Results tab):
     - ready
     - running
     - didn't finish: it failed, or the run stopped before reaching it
     - not in this report: an old report from before the product, or nothing
       was found
-  - The overview has one card per product.
+  - The overview has one card per page.
   - Narrow screens get the tabs as pills.
 - **Live runs:**
   - Streamed over NDJSON with a phase stepper.
@@ -679,7 +690,9 @@ What exists, with known gaps. Slugs are the product page paths.
   tested) and `/dashboard/rubric` (the playbook).
 - **Landing page** (`/`): hero with a live dropzone and the report mock, the
   model's track record, the deck-feedback pitch (`PitchPerspective`), and the
-  closing call-to-action.
+  closing call-to-action. Each section, and the footer, sits on its own solid
+  sheet (`bg-sheet`) inset over the dot grid like the hero card; the layout
+  rule is the comment at the top of `app/(marketing)/page.tsx`.
 - **Dev only:** a cost sidebar with per-stage cost during a live run.
 
 Not built: rerunning a single product, saved usage or cost history, a demo

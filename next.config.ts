@@ -49,6 +49,9 @@ const nextConfig: NextConfig = {
       { source: "/model", destination: "/dashboard/model", permanent: false },
       { source: "/playbook", destination: "/dashboard/rubric", permanent: false },
       { source: "/account/:path*", destination: "/dashboard/account/:path*", permanent: false },
+      // An analysis's Scorecard and Feedback pages became its Results page.
+      { source: "/dashboard/analyses/:id/scorecard", destination: "/dashboard/analyses/:id/results", permanent: false },
+      { source: "/dashboard/analyses/:id/feedback", destination: "/dashboard/analyses/:id/results", permanent: false },
     ];
   },
 
