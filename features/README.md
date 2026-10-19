@@ -113,11 +113,13 @@ re-export still breaks rule 1, even though lint lets it through.
 
 Saved analyses are the `state` jsonb of old runs, replayed by today's code.
 
-- **Event `type`s and usage `stage` labels are never renamed.** They're
-  persisted in saved reports and in `usage.byStage`.
-- **Form keys and their JSON order stay put.** `emptyForm()` and
-  `initialState()` build the object in a fixed order; new keys go at the end
-  of a product's slice.
+- **Event `type`s and usage `stage` labels are never renamed.** Event types
+  are persisted in saved reports. Usage labels aren't saved (the recorder
+  drops `usage` events), but the server log, the dev cost sidebar and any
+  cost tracking key on them.
+- **Form and state keys are never renamed.** New keys go at the end of a
+  product's slice, for tidiness only: jsonb doesn't keep key order, so nothing
+  may depend on it.
 - **New state is optional on read.** A report saved before a product existed
   has no slice for it. Treat absent as "not run", never as "failed".
 - **Shared prompt context stays byte-identical.** Every stage sends the same
@@ -126,23 +128,12 @@ Saved analyses are the `state` jsonb of old runs, replayed by today's code.
 
 ## Adding a product
 
-1. Make `features/<name>/` with `types.ts`, `form.ts`, `state.ts` and whatever
-   else it needs.
-2. Add its stage to `STAGES` in `lib/diligence/engine.ts`, with the stages it
-   `needs`. It runs as soon as they're done, alongside anything independent.
-3. Wire its types into `lib/diligence/types.ts` (form + event union), its
-   sections and blank slice into `lib/diligence/form-schema.ts`, and its state
-   and fold into `lib/diligence/stream-state.ts`.
-4. Add its section to `components/features/analyze/reportSections.tsx`.
-5. To give it a page of its own: add it to `PRODUCT_PAGES` in
-   `lib/products.ts`, then add its sections, status and summary to
-   `PRODUCT_TABS` in `components/features/analyze/productTabs.tsx` (and an icon
-   to `ProductTabIcon`). The route, the sidebar tab and the overview card follow
-   from those. A section that should appear only on its own page, not in the
-   full report, sets `pageOnly`.
-
-Steps 2–5 are a line or two each in shared files; everything else stays in the
-product's folder.
+The full checklist is in the root `AGENTS.md`, under "Adding a product (or a
+new stage)". In short: the folder here, then a line or two in each of
+`lib/diligence/types.ts`, `form-schema.ts`, `stream-state.ts` and `engine.ts`,
+`lib/analyses/run.ts`, `lib/config.ts`, `reportSections.tsx`,
+`lib/products.ts`, `productTabs.tsx` and `lib/analyses/markdown.ts`.
+Everything else stays in the product's folder.
 
 ## Working on one product
 
@@ -150,6 +141,7 @@ Keep the change inside `features/<product>/`. If it needs a registry line in
 one of the composition files above, keep it to that line. Check with:
 
 ```bash
-npx tsc --noEmit
+npx tsc --noEmit --incremental false
 npm run lint
+npm run build
 ```
