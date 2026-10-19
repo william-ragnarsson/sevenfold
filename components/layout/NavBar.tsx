@@ -255,7 +255,7 @@ function AccountLinks({ onCard, linkClass }: { onCard: boolean; linkClass: strin
   if (!configured) {
     return (
       <Link href={ROUTES.dashboard} className={filled}>
-        Dashboard →
+        Dashboard
       </Link>
     );
   }
@@ -267,7 +267,7 @@ function AccountLinks({ onCard, linkClass }: { onCard: boolean; linkClass: strin
   if (isIdentified) {
     return (
       <Link href={ROUTES.dashboard} className={filled}>
-        Dashboard →
+        Dashboard
       </Link>
     );
   }

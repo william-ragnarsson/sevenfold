@@ -10,7 +10,8 @@
   --accent: #1a6b3f;
   --accent-bright: #34d17a;
   --marker: #d6f56b;
-  /* Text on the dashboard's dark sidebar: links, then labels and captions. */
+  /* Text on ink surfaces, such as the overview's full-report card: body, then
+     labels and captions. */
   --on-ink: #c9c5ba;
   --on-ink-muted: #8f8b80;
 }
