@@ -30,8 +30,8 @@ function NoteLines({ notes }: { notes: string }) {
 /**
  * Where the memo's web answers came from: every search the research ran, the
  * sources each one surfaced, and the notes it wrote up (closed by default).
- * Shown under the memo rather than on a page of its own. Landscape lists its
- * own searches on its page.
+ * Shown under the memo rather than on a page of its own, as wide as the memo.
+ * Landscape lists its own searches on its page.
  */
 export function ResearchSources({ state, active }: { state: AnalysisState; active: boolean }) {
   const { searches, sourceCount, notes } = state;
@@ -43,7 +43,7 @@ export function ResearchSources({ state, active }: { state: AnalysisState; activ
     ) : null;
 
   return (
-    <Card eyebrow="Sources" actions={counts}>
+    <Card eyebrow="Sources" actions={counts} className="max-w-4xl">
       <p className="px-5 pb-3 text-sm text-muted">
         What the research searched for to fill the memo&rsquo;s gaps, and what each search turned up.
       </p>

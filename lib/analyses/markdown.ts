@@ -20,6 +20,7 @@ import type {
   Source,
 } from "@/lib/diligence/types";
 import { formatGauge } from "@/lib/invest/gauge";
+import { founderSource } from "@/features/founders/form";
 
 /** Research sources listed in a report; the rest are a click away on the page. */
 const MAX_SOURCES = 25;
@@ -28,6 +29,7 @@ const SOURCE_TAG: Record<Field["source"], string> = {
   deck: "deck",
   web: "web",
   inferred: "inferred",
+  personal: "personal",
   unknown: "",
 };
 
@@ -44,6 +46,7 @@ const SCORE_LABELS: Record<(typeof SCORECARD_METRIC_KEYS)[number], string> = {
 export function renderReport(state: AnalysisState, { url, name }: { url: string; name: string }): string {
   const form = state.form;
   const company = form.company.name.value.trim() || name;
+  const evidence = state.deck?.evidence ?? {};
   const verdict = state.verdict ?? form.verdict;
   const out: string[] = [];
 
@@ -62,13 +65,13 @@ export function renderReport(state: AnalysisState, { url, name }: { url: string;
     out.push(`## ${section.title}`, "");
     for (const field of section.fields) {
       if (field.kind === "founders") {
-        out.push(...renderFounders(form));
+        out.push(...renderFounders(form, evidence[field.key]));
         continue;
       }
       const value = fieldAt(form, field.key);
       // The VC's own meeting notes: only worth a line when someone filled them.
       if (field.manualOnly && !value?.value.trim()) continue;
-      out.push(`- **${field.label}:** ${formatField(value)}`);
+      out.push(`- **${field.label}:** ${formatField(value, evidence[field.key])}`);
     }
     out.push("");
   }
@@ -78,7 +81,7 @@ export function renderReport(state: AnalysisState, { url, name }: { url: string;
   out.push(...renderSources(collectSources(state, form)));
 
   out.push(
-    "_Field tags show where each answer came from: (deck) the pitch deck, (web) SevenFold's web research, (inferred) the model's own inference._",
+    "_Field tags show where each answer came from: (deck) the pitch deck, with the slides cited, (web) SevenFold's web research, (inferred) the model's own inference, (personal) the investor's own edit._",
   );
   return out.join("\n").trim() + "\n";
 }
@@ -141,22 +144,31 @@ function fieldAt(form: DueDiligenceForm, key: string): Field | undefined {
   return node?.[field] as Field | undefined;
 }
 
-function formatField(field: Field | undefined): string {
+function formatField(field: Field | undefined, slides: number[] | undefined): string {
   const value = field?.value.trim();
   if (!value) return "_unknown_";
-  const tag = SOURCE_TAG[field!.source];
+  const tag = sourceTag(field!.source, slides);
   // Multi-line answers (bullets from the model) stay readable inside a list item.
   const body = value.includes("\n") ? "\n  " + value.split("\n").join("\n  ") : value;
   return tag ? `${body} _(${tag})_` : body;
 }
 
-function renderFounders(form: DueDiligenceForm): string[] {
+/** "deck, slides 3, 4" for a deck value with cited slides; otherwise the plain tag. */
+function sourceTag(source: Field["source"], slides: number[] | undefined): string {
+  const tag = SOURCE_TAG[source] ?? "";
+  if (source !== "deck" || !slides?.length) return tag;
+  return `${tag}, ${slides.length === 1 ? "slide" : "slides"} ${slides.join(", ")}`;
+}
+
+function renderFounders(form: DueDiligenceForm, slides: number[] | undefined): string[] {
   const members = form.founders.members;
   if (members.length === 0) return ["- **Founders:** _unknown_"];
   const lines = ["- **Founders:**"];
   for (const f of members) {
     const role = [f.role, f.commitment].filter(Boolean).join(" · ");
-    lines.push(`  - **${f.name || "Unnamed"}**${role ? ` — ${role}` : ""}`);
+    const source = founderSource(f, slides);
+    const tag = source ? sourceTag(source, slides) : "";
+    lines.push(`  - **${f.name || "Unnamed"}**${role ? ` — ${role}` : ""}${tag ? ` _(${tag})_` : ""}`);
     for (const point of f.background) lines.push(`    - ${point}`);
   }
   return lines;

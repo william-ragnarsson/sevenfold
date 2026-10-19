@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /** One label/value row of a report grid. */
-export function Row({ label, children }: { label: string; children: ReactNode }) {
+export function Row({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[130px_1fr] divide-x divide-ink/10 border-b border-ink/10 last:border-b-0 sm:grid-cols-[160px_1fr]">
       <div className="bg-paper-2/40 px-4 py-3 text-sm font-semibold text-ink/75">{label}</div>

@@ -27,13 +27,14 @@ export default function ProductView({
   const aside = useAnalysisAside();
   // The frame shows the loading and missing states.
   if (!report?.state) return null;
-  const { id, state, active, pdf, failure } = report;
+  const { id, state, active, pdf, failure, canEdit, editMemo, saveStatus } = report;
   const tab = PRODUCT_TABS[slug];
   // The full report keeps every section in its column, the slide rail included.
   const env: ReportEnv = {
     pdf,
     slide,
     slideHref: (n) => deckSlidePath(id, n),
+    memo: canEdit ? { edit: editMemo, saveStatus } : undefined,
     aside: tab.sections === "all" ? null : aside,
   };
 

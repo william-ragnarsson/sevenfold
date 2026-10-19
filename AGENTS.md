@@ -27,6 +27,7 @@ Stack:
 - Gemini for every model call (`@google/genai`). The Claude adapter is kept
   only as an outage fallback.
 - An ONNX model for the verdict (`onnxruntime-node`).
+- `@react-pdf/renderer` for the memo's PDF download, made in the browser.
 - An MCP server, so Claude can run analyses.
 - Deployed on Vercel at vcanalyst.williamragnarsson.dev.
 
@@ -65,12 +66,12 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 
 | Path | What it is |
 | --- | --- |
-| `app/` | Routes (see [Routes](#routes)). `app/api/analyze/route.ts` starts a run; `app/mcp/route.ts` is the MCP server endpoint |
+| `app/` | Routes (see [Routes](#routes)). `app/api/analyze/route.ts` starts a run; `app/api/analyses/[id]/route.ts` saves a memo edit; `app/mcp/route.ts` is the MCP server endpoint |
 | `proxy.ts` | Next 16's replacement for middleware (exports `proxy`, always on Node). Refreshes the Supabase session cookies on every request except static assets, `/mcp` and `/.well-known/*`. Sends signed-out and anonymous visitors from `/dashboard` and everything under it to `/sign-in?next=<path>`. Does nothing when Supabase isn't configured |
 | `features/<product>/` | One folder per product: its types, form slice, live state, prompts, parser, pipeline stage and UI. Rules in `features/README.md` |
 | `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
-| `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), and the browser's NDJSON reader (`stream.ts`, `readProgressStream`) |
-| `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
+| `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), the browser's NDJSON reader (`stream.ts`, `readProgressStream`), and a person's memo edits (`edits.ts`: `MemoEdit`, `applyMemoEdit`, `EDITABLE_KEYS`, `PICKABLE_SOURCES`), applied the same way in the browser and by the PATCH route |
+| `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs and `getRunClaim`), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
 | `lib/llm/` | Provider adapters (`gemini.ts`, `claude.ts`) and `pricing.ts` |
 | `lib/config.ts` | Almost every env var, each read through a getter: model per stage, thinking per stage, token and search budgets, Supabase keys. Exceptions: `NEXT_PUBLIC_SITE_URL` is read directly in `app/layout.tsx` and `lib/mcp/server.ts`, and `proxy.ts` reads the `NEXT_PUBLIC_SUPABASE_*` vars itself |
 | `lib/playbook/load.ts` | `loadPlaybook()`: reads `docs/playbook.md` from disk at run time, once per process |
@@ -81,10 +82,10 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/routes.ts` | Page paths and page lists only: `ROUTES`, `analysisPath`, `deckSlidePath`, `signInPath`, `safeNext`, `isDashboardPath` (what `proxy.ts` gates), `DASHBOARD_PAGES` (the sidebar's dashboard links), `PRODUCTS` (the nav bar's Products menu), and the slide param helpers. API, `/auth/*` and `/mcp` paths are written inline where they're used, and `supabase/templates/*.html` hardcode `/auth/confirm`, `/dashboard` and `/dashboard/account/password` |
 | `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR. `coverPage` is the page its card shows (2, since page 1 is a laptop mockup) |
 | `lib/supabase/` | Browser, server, admin and bearer-token clients, plus row types |
-| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
+| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis and its memo edits), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `MemoToolbar` (the memo header's save status and download), `MemoExportButton` and `MemoPdf` (the memo as a PDF, loaded on click). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
 | `components/app-shell/` | Dashboard layout and sidebar. The sidebar swaps to an analysis's tabs when one is open |
 | `components/features/{auth,hero,landing,model}/` | Sign-in and accounts, the landing page, and the `/dashboard/model` explainer |
-| `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`; `Card`, `Dropzone`, whose `deckFileError` is the PDF type and size check `NewAnalysisActions` reuses). The only components a product's `ui/` may import |
+| `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourcePicker`, `SourceRow`, `SlideChips`, `EditableText`, `SearchList`; `Card`, `Dropzone`, whose `deckFileError` is the PDF type and size check `NewAnalysisActions` reuses). The only components a product's `ui/` may import |
 | `components/layout/` | Marketing shell, nav bar, footer |
 | `docs/playbook.md` | The VC rubric. **Runtime prompt input**: every stage sends it, and `/dashboard/rubric` renders it. Editing it changes analysis output |
 | `supabase/migrations/`, `supabase/templates/` | SQL migrations; auth email templates |
@@ -106,6 +107,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/dashboard/account` | Profile, password link, data export, account deletion |
 | `/dashboard/account/password` | Set or change the password |
 | `/api/analyze` | POST, NDJSON stream. Needs an account when Supabase is configured |
+| `/api/analyses/<id>` | PATCH: saves one memo edit ([Editing a memo](#editing-a-memo)). Cookie session only, so MCP tokens can't reach it |
 | `/api/account/export`, `/api/account/delete` | Account data |
 | `/mcp` | MCP over OAuth (Supabase is the authorization server) |
 | `/.well-known/oauth-protected-resource` | OAuth resource metadata. `/.well-known/oauth-protected-resource/mcp` rewrites to it, and is where `/mcp`'s 401 points |
@@ -146,8 +148,9 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
    - It upserts the row on `(user_id, deck_hash)` with a fresh
      `initialState()` and `deck_path` null, then uploads the PDF and sets
      `deck_path`. So a rerun replaces the whole saved report, every product's
-     slice included. To change one product's saved data, update the row
-     instead of going through `recordFor`.
+     slice and every memo edit included. To change one product's saved data,
+     update the row instead of going through `recordFor`, as
+     `PATCH /api/analyses/<id>` does.
    - It returns a `SupabaseRecorder`. With no owner (accounts off), or when
      that upsert fails, it returns `NOOP_RECORDER` instead, and the browser
      run carries on unsaved. A failed PDF upload only leaves the row without a
@@ -188,7 +191,62 @@ MCP runs (`lib/mcp/server.ts`: `analyze_deck`, `get_analysis`,
   most 50) per call.
 - The markdown leaves out the deck's slides and research's notes and searches
   (research shows only as its sources, at most 25, `MAX_SOURCES`), and drops
-  feedback items' slide citations.
+  feedback items' slide citations. Memo values and founders carry their
+  source tag, and a deck one its cited slides.
+
+### Editing a memo
+
+A finished memo can be edited in place, on the memo page and in the full
+report. The Founders page shows the same cells read-only.
+
+- `ReportProvider` exposes `canEdit`, `editMemo` and `saveStatus`.
+  - `canEdit` needs a report that isn't running: a run in this tab once it's
+    `done`, or a saved row. It also needs a signed-in, non-anonymous user, so
+    accounts-off mode can't edit.
+  - `ProductView` puts `editMemo` in `ReportEnv.memo` only when `canEdit` is
+    true. Without it, `MemoView` and `FoundersRows` are read-only.
+- An edit (`MemoEdit`, `lib/diligence/edits.ts`) is one of two things:
+  - one text cell's value, its source, or both;
+  - the whole founders list.
+- What an edit does to a cell:
+  - Typing a value makes the cell `personal`, unless the edit names a source.
+  - Emptying it makes it `unknown`.
+  - The badge offers `deck`, `web`, `inferred` and `personal`.
+  - Any text cell in `DOC_SECTIONS` can be edited (`EDITABLE_KEYS`), the two
+    `manualOnly` ones included.
+- Limits:
+  - A value is capped at 4,000 characters (`MAX_EDITED_VALUE`).
+  - Founders go through `editedFounders` (`features/founders/form.ts`): at
+    most 12, each with 10 bullets of 500 characters.
+- How an edit is saved:
+  1. `applyMemoEdit` changes the shown form at once, as an overlay keyed by id
+     and `startedAt`. A rerun therefore never shows the old run's edits.
+  2. The edits go to `PATCH /api/analyses/<id>` one at a time, in order.
+  3. When the last one is answered, the memo shows the server's form. An edit
+     that failed drops out, and `saveStatus` carries its message.
+- The route (`app/api/analyses/[id]/route.ts`):
+  - Validates `{ startedAt, edit }` with zod.
+  - Re-reads the row and applies the edit to its fresh `state.form`, never the
+    browser's copy, so a tab's live state (usage events and all) is never
+    written.
+  - Answers 409 in each of these cases:
+    - a run that's still going and hasn't stalled;
+    - a `startedAt` that isn't the row's, meaning a rerun replaced the report;
+    - accounts off.
+  - Writes under the recorder's `state->>startedAt` guard.
+  - Renames the row when the company name changes.
+- A run in this tab keeps the browser's own `startedAt`, not the row's claim.
+  So its first edit looks the claim up with `getRunClaim`
+  (`lib/analyses/store.ts`).
+- The memo header (`MemoToolbar`) shows the save status and a Download PDF
+  button (`MemoExportButton`).
+  - It loads `@react-pdf/renderer` and `MemoPdf` on the first click, so
+    they're not in the page bundle.
+  - It renders the shown state, edits included, to `<company>-memo.pdf`.
+  - No server or model call, so it's free.
+- `MemoPdf` uses the PDF's built-in Helvetica (WinAnsi), so there's no font to
+  fetch. `pdfSafe` swaps common symbols (→, ≈, ≥) for plain text, drops
+  emoji, and prints other characters outside it as "?".
 
 ### The pipeline
 
@@ -251,18 +309,34 @@ as soon as the stages it `needs` are done.
   sources are `form.sources`, a direct `ctx.form` write with no event of its
   own, so before the `report` event (or in a run that stopped short) they
   exist only in `state.searches`.
-- Field sources are `deck`, `web`, `inferred` and `unknown` (`FieldSource`,
-  `lib/core/types.ts`). A source a model sends that isn't in `VALID_SOURCES`
-  is stored as `inferred`. `applyTextField` (`lib/core/parse.ts`) won't
-  overwrite a filled text cell with a lower-ranked source (`SOURCE_PRIORITY`:
-  deck = web > inferred > unknown). `FIELD_HANDLERS` entries have no such
+- Field sources are `deck`, `web`, `inferred`, `unknown` and `personal`
+  (`FieldSource`, `lib/core/types.ts`). `personal` is a person's own edit and
+  isn't in `VALID_SOURCES`, so a model can't claim it: a source a model sends
+  that isn't in `VALID_SOURCES` is stored as `inferred`. `applyTextField`
+  (`lib/core/parse.ts`) won't overwrite a filled text cell with a lower-ranked
+  source (`SOURCE_PRIORITY`: personal > deck = web > inferred > unknown). `FIELD_HANDLERS` entries have no such
   guard: each `founders` line replaces the whole list (an empty or malformed
   one empties it), and `complete` is asked for the whole form, so it can
   re-emit `founders` after `extract`. Any `scorecard.*` line overwrites that
   rating.
-- `normalizeFounders` (`features/founders/form.ts`) rebuilds each founder from
-  `role`, `name`, `commitment` and `background` only, so a key added to
-  `Founder` is dropped unless it's added there too.
+- Each founder has an optional `source`:
+  - `applyFoundersField` stamps the `founders` line's source on every member.
+  - Older reports have none. `founderSource` (`features/founders/form.ts`)
+    then reads it as `deck` when the deck cited slides for `founders`, and as
+    no source otherwise. The deck page makes the same assumption.
+- Two functions rebuild founders, and a key added to `Founder` is dropped
+  unless it's added to both:
+  - `normalizeFounders` (model output) keeps `role`, `name`, `commitment` and
+    `background`.
+  - `editedFounders` (a person's edit) keeps those and the `source`.
+- A memo edit rewrites `state.form` in the saved row ([Editing a
+  memo](#editing-a-memo)). It emits no event and never touches the top-level
+  `verdict`, `deckFeedback` or `landscape` copies.
+- Slide evidence (`state.deck.evidence`) is kept when a cell is edited.
+  - The memo shows a cell's slides only while its source is `deck`, so
+    setting an edited cell back to deck brings them back.
+  - The deck page leaves `personal` values and founders off its slides
+    (`findingValue`).
 - An unscored scorecard has every rating at 0 and funding `null`. With
   `fundingInUsd` set (top-level state), funding is whole US dollars, `null`
   means unknown and `0` means confirmed nothing raised. Older reports lack
@@ -273,7 +347,8 @@ as soon as the stages it `needs` are done.
   in the field list `extract` and `complete` send. The extract prompt and
   their hints ask the model to leave them out, but no code stops a value
   landing there (`applyTextField` doesn't check `manualOnly`), and the memo
-  and the markdown show one if it does. `computeGaps` skips them.
+  and the markdown show one if it does. `computeGaps` skips them. A person
+  fills them in by editing the memo.
 
 ## Rules for every change
 
@@ -282,7 +357,7 @@ as soon as the stages it `needs` are done.
 `npm run lint` (`eslint.config.mjs`) enforces these:
 
 - A product never imports another product. When one needs another's output,
-  the composition layer passes it in as a prop (see `MEMO_RENDERERS` and
+  the composition layer passes it in as a prop (see `memoRenderers` and
   `ReportEnv.slideHref` in `reportSections.tsx`).
 - A product's top-level files, except `stage.ts`, are pure. They import values
   only from `lib/core` and their siblings: no packages, no Node built-ins, no
@@ -439,6 +514,12 @@ command. Don't edit `.claude/launch.json` without asking the owner.
   - Nothing is saved, but a run with a key still costs money.
 - There's no demo mode, so saved report pages can't be checked without real
   data. Say so instead of guessing.
+- The memo's PDF can be checked without a browser or a run: render `MemoPdf`
+  in Node with `renderToFile` from `@react-pdf/renderer`, from a hand-written
+  `AnalysisState` (an `emptyForm()` with values filled in, plus
+  `deck.evidence`). `MemoPdf.tsx` is TSX with `@/` imports, so load it
+  through a loader such as `jiti` with the `@` alias set. Keep the script out
+  of the repo.
 
 ### Next.js 16
 
@@ -523,8 +604,12 @@ but not all.
      skips source priority ([Saved data](#saved-data-worth-knowing)), so add
      your own check if earlier values must survive a later stage.
    - A new non-text kind also needs a `FieldKind` member
-     (`lib/core/schema.ts`), a `MEMO_RENDERERS` entry (`reportSections.tsx`)
-     and a case in `renderReport` (`markdown.ts`).
+     (`lib/core/schema.ts`), an entry in `memoRenderers`
+     (`reportSections.tsx`), a case in `MemoPdf`
+     (`components/features/analyze/MemoPdf.tsx`) and a case in
+     `renderReport` (`markdown.ts`). `applyMemoEdit` edits only text cells
+     and the founders list, so the kind stays read-only until it gets a
+     `MemoEdit` of its own.
 4. **`lib/diligence/stream-state.ts`:**
    - Add `XState` to `AnalysisState extends …` and `...initialXState()` to
      `initialState`.
@@ -609,8 +694,13 @@ but not all.
   and in `lib/analyses/markdown.ts` both `SOURCE_TAG` and the legend sentence
   at the end of `renderReport`. If models may send it, also add it to
   `VALID_SOURCES` and to the memo prompt's `source` list
-  (`features/memo/prompts.ts`). `tsc` catches the `Record<FieldSource, …>`
-  maps, not the legend, `VALID_SOURCES` or the prompt.
+  (`features/memo/prompts.ts`). Also add it to `FIELD_SOURCES`
+  (`lib/core/parse.ts`) and to the founder `source` enum in
+  `app/api/analyses/[id]/route.ts`. If a person may pick it from the badge,
+  add it to `PICKABLE_SOURCES` (`lib/diligence/edits.ts`) and `CHOICES`
+  (`components/report/SourcePicker.tsx`). `tsc` catches the
+  `Record<FieldSource, …>` maps (`TAGS` in `MemoPdf.tsx` among them), not the
+  legend, the source lists, the route's enum or the prompt.
 - **A sign-in provider:** an `AUTH_PROVIDERS` entry
   (`components/features/auth/providers.ts`). `SignInCard` shows
   `ProviderIcon` on every provider's button, and `ProviderIcon` takes no
@@ -627,15 +717,15 @@ What exists, with known gaps. Slugs are the product page paths.
 
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
-| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it (deck-sourced fields only). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`; a live run moves it along. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
-| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source. The page ends with research's Sources | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
-| **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
+| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it (deck-sourced fields only). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`; a live run moves it along. A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. Not in the MCP markdown. No export. No fallback OCR model |
+| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from. Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF. The page ends with research's Sources | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
+| **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty. Each founder shows its source and, from the deck, the slides cited. Editable in the memo | No research of its own. The Founders page is read-only. One source per founder, not per detail |
 | **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
 | **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
 | **Feedback** (`feedback/`) | `results` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
 | **Verdict** (`verdict/`) | `results` | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
-| **Full report** | `report` | Every section on one page, with a chapters nav | — |
+| **Full report** | `report` | Every section on one page, with a chapters nav. Its memo can be edited and downloaded as on the memo page | — |
 
 ### Platform
 

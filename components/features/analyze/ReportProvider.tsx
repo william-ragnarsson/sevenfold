@@ -1,13 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { useAnalysis } from "./AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
-import { getAnalysis, type AnalysisRecord } from "@/lib/analyses/store";
+import { getAnalysis, getRunClaim, type AnalysisRecord } from "@/lib/analyses/store";
 import { isStalled, STALLED_MESSAGE } from "@/lib/analyses/status";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import type { DueDiligenceForm } from "@/lib/diligence/types";
+import { applyMemoEdit, type MemoEdit } from "@/lib/diligence/edits";
 import { analysisIdOf } from "@/lib/routes";
 import { savedDeckSource } from "./deckSource";
 
@@ -18,6 +20,13 @@ const POLL_MS = 4000;
 function inProgress(record: AnalysisRecord): boolean {
   return record.status === "running" && !isStalled(record.status, record.startedAt);
 }
+
+/** Where the memo's edits stand: being saved, all saved, or one that failed. */
+export type SaveStatus =
+  | { kind: "idle" }
+  | { kind: "saving" }
+  | { kind: "saved" }
+  | { kind: "error"; message: string };
 
 /** The analysis open in the dashboard, shared by its pages and the sidebar. */
 export interface OpenReport {
@@ -39,6 +48,11 @@ export interface OpenReport {
   pdf: PdfSource | null;
   /** Why the run stopped short: this tab's error, or a saved run that failed or died. */
   failure: string | null;
+  /** True when the memo can be edited: a finished, saved report and a signed-in account. */
+  canEdit: boolean;
+  /** Change the memo. `state` shows it at once; it's saved in the background. */
+  editMemo: (edit: MemoEdit) => void;
+  saveStatus: SaveStatus;
 }
 
 const ReportContext = createContext<OpenReport | null>(null);
@@ -52,6 +66,16 @@ export function useReport(): OpenReport | null {
 type Fetched = { id: string; record: AnalysisRecord | null };
 
 /**
+ * The memo as edited here, laid over the report it was edited on, by report
+ * id. Each is tagged with its report's `startedAt`, so a rerun never shows the
+ * last run's edits.
+ */
+type Overlay = { startedAt: number | null; form: DueDiligenceForm };
+type Overlays = Record<string, Overlay>;
+
+const SAVE_FAILED = "Couldn't save that edit.";
+
+/**
  * Loads the analysis in the url (`/dashboard/analyses/<id>/…`) once, for every
  * page of it and for the sidebar beside them, so moving between its product
  * pages never re-fetches. Sits in the dashboard shell, above both.
@@ -63,13 +87,20 @@ export default function ReportProvider({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
   const [fetched, setFetched] = useState<Fetched | null>(null);
 
+  const [overlays, setOverlays] = useState<Overlays>({});
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>({ kind: "idle" });
+
   // Leaving an analysis forgets it, so coming back re-reads it rather than
   // showing last visit's copy as current (it may have finished, failed or gone
   // since). Reset during render, not in an effect, so no frame shows the old one.
+  // Its edits go too, since the re-read has them, except a run in this tab's:
+  // that is never re-read, so its edits stay laid over it.
   const [openId, setOpenId] = useState(id);
   if (openId !== id) {
     setOpenId(id);
     setFetched(null);
+    setOverlays((all) => (currentId && all[currentId] ? { [currentId]: all[currentId] } : {}));
+    setSaveStatus({ kind: "idle" });
   }
 
   const isLive = id !== null && currentId === id;
@@ -113,8 +144,17 @@ export default function ReportProvider({ children }: { children: ReactNode }) {
   // tagged with this url's id counts, so the old report can't reappear here.
   const settled = isLive || (!authLoading && fetched?.id === id);
   const record = isLive || fetched?.id !== id ? null : fetched.record;
-  const state = isLive ? stream : record?.state ?? null;
+  const saved = isLive ? stream : record?.state ?? null;
+  const overlay = id ? overlays[id] : undefined;
+  const edited = overlay && saved && overlay.startedAt === saved.startedAt ? overlay.form : null;
+  const state = useMemo(() => (saved && edited ? { ...saved, form: edited } : saved), [saved, edited]);
   const active = isLive ? status === "loading" : record !== null && inProgress(record);
+  // A run in this tab is editable once it's done; one saved elsewhere once it
+  // has stopped. Accounts off or signed out, there's nowhere to save to.
+  const canEdit =
+    state !== null && !active && user !== null && !user.is_anonymous && (isLive ? status === "done" : record !== null);
+
+  const editMemo = useMemoEditor(id, state, canEdit, isLive ? undefined : (record?.state?.startedAt ?? null), setOverlays, setSaveStatus);
   const name =
     state?.form.company.name.value.trim() ||
     record?.name ||
@@ -139,9 +179,110 @@ export default function ReportProvider({ children }: { children: ReactNode }) {
       : null;
 
   const value = useMemo<OpenReport | null>(
-    () => (id ? { id, name, isLive, settled, record, state, active, pdf, failure } : null),
-    [id, name, isLive, settled, record, state, active, pdf, failure],
+    () =>
+      id
+        ? { id, name, isLive, settled, record, state, active, pdf, failure, canEdit, editMemo, saveStatus }
+        : null,
+    [id, name, isLive, settled, record, state, active, pdf, failure, canEdit, editMemo, saveStatus],
   );
 
   return <ReportContext.Provider value={value}>{children}</ReportContext.Provider>;
 }
+
+/**
+ * `editMemo` for the open report. Each edit is applied to the form shown at
+ * once, then sent to `PATCH /api/analyses/<id>`, one at a time and in order.
+ * Once the last one is answered the memo shows the server's form, which is the
+ * saved one: an edit that failed drops out of it, and edits made in another
+ * tab come in.
+ *
+ * `claim` is the saved row's `startedAt`, which the server checks the edit
+ * against. A run in this tab doesn't know it (its `startedAt` is the browser's
+ * own), so it passes undefined and the first save looks it up.
+ */
+function useMemoEditor(
+  id: string | null,
+  state: AnalysisState | null,
+  canEdit: boolean,
+  claim: number | null | undefined,
+  setOverlays: (update: (all: Overlays) => Overlays) => void,
+  setSaveStatus: (status: SaveStatus) => void,
+): (edit: MemoEdit) => void {
+  // Read when an edit comes in rather than captured, so a stale callback can't
+  // edit a report that's no longer open.
+  const latest = useRef({ id, state, canEdit, claim });
+  useEffect(() => {
+    latest.current = { id, state, canEdit, claim };
+  });
+  const queue = useRef<Promise<void>>(Promise.resolve());
+  // The edits to one report (one id and `startedAt`) since it was opened.
+  const batch = useRef<Batch | null>(null);
+
+  return useCallback(
+    (edit: MemoEdit) => {
+      const { id, state, canEdit, claim } = latest.current;
+      if (!id || !state || !canEdit) return;
+      const key = `${id}:${state.startedAt}`;
+      if (batch.current?.key !== key) batch.current = { key, claim, pending: 0, failed: null, form: null, serverForm: null };
+      const b = batch.current;
+
+      // Build on the last edit even before a render has shown it.
+      const form = structuredClone(b.form ?? state.form);
+      if (!applyMemoEdit(form, edit)) return;
+      b.form = form;
+      b.pending += 1;
+      const startedAt = state.startedAt;
+      setOverlays((all) => ({ ...all, [id]: { startedAt, form } }));
+      setSaveStatus({ kind: "saving" });
+
+      queue.current = queue.current.then(async () => {
+        try {
+          if (b.claim === undefined) b.claim = await getRunClaim(id);
+          if (b.claim === undefined) throw new Error("This analysis isn't saved, so edits to it can't be.");
+          const res = await fetch(`/api/analyses/${encodeURIComponent(id)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ startedAt: b.claim, edit }),
+          });
+          const body = (await res.json().catch(() => null)) as { form?: DueDiligenceForm; error?: string } | null;
+          if (!res.ok || !body?.form) throw new Error(body?.error || SAVE_FAILED);
+          b.serverForm = body.form;
+        } catch (err) {
+          b.failed = err instanceof Error ? err.message : SAVE_FAILED;
+        }
+        b.pending -= 1;
+        if (b.pending > 0) return;
+        // All answered: show what was saved, which drops any edit that failed.
+        // Not if the report was closed meanwhile: its re-read has the edits.
+        const saved = b.serverForm;
+        b.form = saved;
+        setOverlays((all) => {
+          if (all[id]?.startedAt !== startedAt) return all;
+          const rest = { ...all };
+          if (saved) rest[id] = { startedAt, form: saved };
+          else delete rest[id];
+          return rest;
+        });
+        if (batch.current === b && latest.current.id === id) {
+          setSaveStatus(b.failed ? { kind: "error", message: b.failed } : { kind: "saved" });
+        }
+        b.failed = null;
+      });
+    },
+    [setOverlays, setSaveStatus],
+  );
+}
+
+type Batch = {
+  key: string;
+  /** The row's `startedAt`; undefined until looked up, for a run in this tab. */
+  claim: number | null | undefined;
+  /** Edits sent and not yet answered. */
+  pending: number;
+  /** Why the last failed edit failed, until the batch is reported. */
+  failed: string | null;
+  /** The form with every edit so far, saved or not. */
+  form: DueDiligenceForm | null;
+  /** The form the server last saved. */
+  serverForm: DueDiligenceForm | null;
+};

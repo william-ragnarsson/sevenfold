@@ -48,9 +48,16 @@ export function isUnmapped(deck: DeckState): boolean {
   return deck.read && deck.slides.length === 0 && !!deck.unassigned;
 }
 
+/**
+ * What a cited field holds now. A value a person typed in themselves isn't
+ * shown on the slide it replaced; neither is a founder they added or edited.
+ */
 function findingValue(form: DueDiligenceForm, key: string, kind: string): { value: string; source: FieldSource } | null {
   if (kind === "founders") {
-    const names = form.founders.members.map((m) => m.name).filter(Boolean);
+    const names = form.founders.members
+      .filter((m) => m.source !== "personal")
+      .map((m) => m.name)
+      .filter(Boolean);
     return names.length ? { value: names.join(", "), source: "deck" } : null;
   }
   if (key === "scorecard.funding") {
@@ -62,7 +69,7 @@ function findingValue(form: DueDiligenceForm, key: string, kind: string): { valu
     return n > 0 ? { value: `${n} / 5`, source: "inferred" } : null;
   }
   const field = readField(form, key);
-  return field?.value ? { value: field.value, source: field.source } : null;
+  return field?.value && field.source !== "personal" ? { value: field.value, source: field.source } : null;
 }
 
 /**
