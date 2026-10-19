@@ -145,3 +145,6 @@ npx tsc --noEmit --incremental false
 npm run lint
 npm run build
 ```
+
+Before you report back, update the root `AGENTS.md` (and the tables here) so
+they describe the project with your change in it.
