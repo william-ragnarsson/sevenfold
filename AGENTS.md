@@ -81,7 +81,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/routes.ts` | Page paths and page lists only: `ROUTES`, `analysisPath`, `deckSlidePath`, `signInPath`, `safeNext`, `isDashboardPath` (what `proxy.ts` gates), `DASHBOARD_PAGES` (the sidebar's dashboard links), `PRODUCTS` (the nav bar's Products menu), and the slide param helpers. API, `/auth/*` and `/mcp` paths are written inline where they're used, and `supabase/templates/*.html` hardcode `/auth/confirm`, `/dashboard` and `/dashboard/account/password` |
 | `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR |
 | `lib/supabase/` | Browser, server, admin and bearer-token clients, plus row types |
-| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `AnalysisLauncher` (every dropzone), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `DashboardHome` (dropzone, five recent cards, metrics), `RecentAnalyses` (the full list with delete and clear all, on `/dashboard/analyses` and `/dashboard/account`), `AnalysisWorkspace` (the `/dashboard/analyses` body) |
+| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `AnalysisLauncher` (every dropzone), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `DashboardHome` (dropzone, five recent cards, metrics), `RecentAnalyses` (the full list with delete and clear all, on `/dashboard/analyses` and `/dashboard/account`), `AnalysisWorkspace` (the `/dashboard/analyses` body) |
 | `components/app-shell/` | Dashboard layout and sidebar. The sidebar swaps to an analysis's tabs when one is open |
 | `components/features/{auth,hero,landing,model}/` | Sign-in and accounts, the landing page, and the `/dashboard/model` explainer |
 | `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`; `Card`, `Dropzone`). The only components a product's `ui/` may import |
@@ -551,7 +551,8 @@ but not all.
      slice.
    - Array order is the full report's order.
    - `pageOnly` keeps a section off the full report.
-   - `ReportEnv` carries the PDF and slide links.
+   - `ReportEnv` carries the PDF, the slide links and `aside`, the page's
+     right-hand column (null on the full report).
 10. **`lib/products.ts`:** add a `PRODUCT_PAGES` entry for the product's own
     page, before `report`. Array order is the order of the sidebar tabs and
     the narrow-screen pills.
@@ -612,7 +613,7 @@ What exists, with known gaps. Slugs are the product page paths.
 
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
-| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR) and shows each slide's image beside its text. For each slide, lists the memo fields taken from it (deck-sourced fields only). Opens a given slide with `?slide=N` | MCP runs have no stored PDF, so no slide images, and the page doesn't say why. Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
+| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it (deck-sourced fields only). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`; a live run moves it along | MCP runs have no stored PDF, so no slide images (the page says so). Not in the MCP markdown. No export. No fallback OCR model. The memo page itself has no slide links |
 | **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source | Read-only: the two `manualOnly` fields say "add manually" with no way to. No export |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
 | **Research** (`research/`) | `research` | Web research aimed at the deck's gaps: the searches, the sources and the notes | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |

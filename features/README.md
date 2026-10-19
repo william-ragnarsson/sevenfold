@@ -52,7 +52,9 @@ tabs, each with a status dot. The pieces:
 - `components/features/analyze/ReportProvider.tsx`: loads the open analysis
   once, from the live run or the database, for the page and the sidebar.
 - `app/dashboard/analyses/[id]/layout.tsx` and `AnalysisFrame.tsx`: the header
-  and loading states every page of an analysis shares.
+  and loading states every page of an analysis shares, and the right-hand
+  column a page can put its own sidebar in (`ReportEnv.aside`; the Deck page's
+  slide rail).
 
 Old `/due-diligence/…` and `/dashboard/due-diligence/…` links redirect here
 (`next.config.ts`).

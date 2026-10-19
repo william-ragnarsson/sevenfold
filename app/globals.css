@@ -144,7 +144,7 @@ html, body {
 
 /* Deck section: a slide glows when a field is found on it. The frame keys
    this layer by the find, so each new one replays it. Drawn inside the edge,
-   because the reel clips anything outside its frame. */
+   because the frame clips anything outside it. */
 @keyframes slide-found {
   0% { opacity: 0; }
   18% { opacity: 1; }
