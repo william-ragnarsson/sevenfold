@@ -680,7 +680,9 @@ What exists, with known gaps. Slugs are the product page paths.
   tested) and `/dashboard/rubric` (the playbook).
 - **Landing page** (`/`): hero with a live dropzone and the report mock, the
   model's track record, the deck-feedback pitch (`PitchPerspective`), and the
-  closing call-to-action.
+  closing call-to-action. Each section, and the footer, sits on its own solid
+  sheet (`bg-sheet`) inset over the dot grid like the hero card; the layout
+  rule is the comment at the top of `app/(marketing)/page.tsx`.
 - **Dev only:** a cost sidebar with per-stage cost during a live run.
 
 Not built: rerunning a single product, saved usage or cost history, a demo

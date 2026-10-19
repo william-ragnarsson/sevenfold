@@ -4,6 +4,10 @@
 :root {
   --paper: #f6f4ee;
   --paper-2: #efece2;
+  /* Solid surfaces laid over the dot grid, such as the home page's section
+     sheets: a step lighter than the paper, so they read as a sheet on it
+     without the glare of pure white. */
+  --sheet: #fbfaf7;
   --ink: #14130f;
   --ink-2: #22201a;
   --muted: #54514a;
@@ -19,6 +23,7 @@
 @theme inline {
   --color-paper: var(--paper);
   --color-paper-2: var(--paper-2);
+  --color-sheet: var(--sheet);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-muted: var(--muted);
