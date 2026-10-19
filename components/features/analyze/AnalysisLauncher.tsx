@@ -36,10 +36,10 @@ const TONES = {
  * first, and it immediately drifted — due diligence had it and the closing CTA
  * on the home page didn't, for no reason anyone chose.
  *
- * Rendered in the hero card (dark, compact), the home page's closing CTA (light,
- * elevated), the dashboard and /dashboard/analyses (light); it reads everything it
- * needs from the analysis context, so the call sites stay in sync without prop
- * drilling.
+ * Rendered in the landing page's hero card (dark, compact) and its closing CTA
+ * (light, elevated); it reads everything it needs from the analysis context, so
+ * the call sites stay in sync without prop drilling. The dashboard pages use
+ * `NewAnalysisActions` instead.
  */
 export default function AnalysisLauncher({
   tone = "light",

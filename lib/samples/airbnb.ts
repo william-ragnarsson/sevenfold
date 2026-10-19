@@ -39,6 +39,8 @@ export interface SampleDeck {
   pdfPath: string;
   /** Pre-extracted deck text — see the regeneration note above. */
   deckText: string;
+  /** The page the analysis cards show as the deck's cover. Defaults to 1. */
+  coverPage?: number;
 }
 
 export const AIRBNB_SAMPLE: SampleDeck = {
@@ -50,6 +52,8 @@ export const AIRBNB_SAMPLE: SampleDeck = {
   id: "32d03bb287506fc32ee4ef20f608ceb84275270fb87fa906f1f7a10b85dc97d9",
   label: "Airbnb's 2008 seed deck",
   pdfPath: "/sample-decks/airbnb-2008-seed-deck.pdf",
+  // Page 1 is Slidebean's laptop mockup; page 2 is Airbnb's own title slide.
+  coverPage: 2,
   deckText: `[Slide 2]
 airbnb Pitch Deck
 Book rooms with locals rather than hotels

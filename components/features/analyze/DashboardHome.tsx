@@ -1,17 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import AnalysisLauncher from "./AnalysisLauncher";
+import AnalysisCard from "./AnalysisCard";
 import { useAnalysis } from "./AnalysisProvider";
-import { relativeTime } from "./elapsed";
+import CurrentAnalysisCard from "./CurrentAnalysisCard";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
-import VerdictBadge, { verdictScore } from "@/features/verdict/ui/VerdictBadge";
+import { verdictScore } from "@/features/verdict/ui/VerdictBadge";
 import type { AnalysisSummary } from "@/lib/analyses/store";
-import { isStalled } from "@/lib/analyses/status";
-import { analysisPath, ROUTES } from "@/lib/routes";
+import { ROUTES } from "@/lib/routes";
 
-const RECENT = 5;
+const RECENT = 6;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function withinDays(iso: string, days: number): boolean {
@@ -43,26 +42,41 @@ function metricsOf(history: AnalysisSummary[]) {
 }
 
 /**
- * Where the dashboard opens: the dropzone for the next deck, the last few
- * analyses as cards, and the account's numbers. The full list lives on
- * /dashboard/analyses.
+ * The dashboard's body: the run in progress, if there is one, then the
+ * account's numbers and its newest analyses as cards. The page header holds
+ * the New analysis button; the full list lives on /dashboard/analyses.
  */
 export default function DashboardHome() {
-  const { history, historyLoading, refreshHistory } = useAnalysis();
+  const { status, history, historyLoading, refreshHistory } = useAnalysis();
   const { user, loading: authLoading, configured } = useAuth();
-  // Without accounts there's nothing saved to show, just the dropzone.
+  // Without accounts nothing is saved, so there's nothing to show here.
   const showSaved = configured && !authLoading && (user !== null || historyLoading);
+  // Before the list arrives the numbers would all read 0, so they wait.
+  const pending = historyLoading && history.length === 0;
 
   return (
     <div className="space-y-10">
-      <section>
-        <AnalysisLauncher />
-      </section>
+      {status === "loading" && <CurrentAnalysisCard />}
 
       <LegacyImportPrompt onImported={() => void refreshHistory()} />
 
       {showSaved && (
         <>
+          <section className="space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">At a glance</h2>
+            <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {metricsOf(history).map((m) => (
+                <div key={m.label} className="rounded-3xl border border-ink/12 bg-paper-2/50 p-5 backdrop-blur">
+                  <dt className="text-sm font-medium text-muted">{m.label}</dt>
+                  <dd className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-ink">
+                    {pending ? "—" : m.value}
+                  </dd>
+                  <dd className="mt-1 text-xs text-muted">{pending ? " " : m.note}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
           <section className="space-y-3">
             <div className="flex items-baseline justify-between gap-4">
               <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Recent analyses</h2>
@@ -72,72 +86,24 @@ export default function DashboardHome() {
                 </Link>
               )}
             </div>
-            {historyLoading && history.length === 0 ? (
+            {pending ? (
               <p className="rounded-3xl border border-ink/12 bg-paper-2/50 px-5 py-4 text-sm text-muted">Loading…</p>
             ) : history.length === 0 ? (
               <p className="rounded-3xl border border-dashed border-ink/15 px-5 py-6 text-sm text-muted">
-                Nothing here yet. Drop a deck above and its analysis will be waiting here.
+                Nothing here yet. Drop a PDF anywhere on this page, or try the sample deck.
               </p>
             ) : (
-              // One row, left to right; it scrolls sideways where five don't fit.
-              <ul className="-mx-1 grid auto-cols-[minmax(13rem,1fr)] grid-flow-col gap-4 overflow-x-auto px-1 pb-2">
+              <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {history.slice(0, RECENT).map((record) => (
-                  <li key={record.rowId} className="flex">
-                    <RecentCard record={record} />
+                  <li key={record.rowId}>
+                    <AnalysisCard record={record} />
                   </li>
                 ))}
               </ul>
             )}
           </section>
-
-          <section className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">At a glance</h2>
-            <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {metricsOf(history).map((m) => (
-                <div key={m.label} className="rounded-3xl border border-ink/12 bg-paper-2/50 p-5 backdrop-blur">
-                  <dt className="text-sm font-medium text-muted">{m.label}</dt>
-                  <dd className="mt-2 text-3xl font-bold tracking-tight tabular-nums text-ink">{m.value}</dd>
-                  <dd className="mt-1 text-xs text-muted">{m.note}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
         </>
       )}
     </div>
-  );
-}
-
-function RecentCard({ record }: { record: AnalysisSummary }) {
-  const name = record.name || "Untitled deck";
-  const unfinished = record.status === "running" && isStalled(record.status, record.startedAt);
-  const status =
-    record.status === "error"
-      ? { label: "Failed", pill: "bg-red-500/10 text-red-700" }
-      : unfinished
-        ? { label: "Unfinished", pill: "bg-red-500/10 text-red-700" }
-        : record.status === "running"
-          ? { label: "Running", pill: "bg-amber-500/10 text-amber-700" }
-          : null;
-
-  return (
-    <Link
-      href={analysisPath(record.id)}
-      className="group flex w-full flex-col rounded-3xl border border-ink/12 bg-paper-2/50 p-5 backdrop-blur transition-colors hover:border-ink/25 hover:bg-paper-2 focus-visible:outline-2 focus-visible:outline-accent"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink text-sm font-semibold uppercase text-paper" aria-hidden>
-          {name.charAt(0)}
-        </span>
-        {status ? (
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.pill}`}>{status.label}</span>
-        ) : (
-          <VerdictBadge verdict={record.verdict} />
-        )}
-      </div>
-      <p className="mt-4 line-clamp-2 font-semibold text-ink">{name}</p>
-      <p className="mt-1 text-sm text-muted">{relativeTime(record.generatedAt)}</p>
-      <span className="mt-auto pt-4 text-sm font-medium text-accent group-hover:underline">Open →</span>
-    </Link>
   );
 }

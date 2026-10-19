@@ -46,13 +46,13 @@ export const DASHBOARD_PAGES = [
   {
     id: "dashboard",
     label: "Dashboard",
-    description: "Drop a deck, see your latest analyses and how they add up.",
+    description: "Start an analysis, see your latest ones and how they add up.",
     href: ROUTES.dashboard,
   },
   {
     id: "analyses",
     label: "Analyses",
-    description: "Every deck you've analysed, and a place to add more.",
+    description: "Every deck you've analysed, as cards or a list.",
     href: ROUTES.analyses,
   },
   MODEL_PAGE,

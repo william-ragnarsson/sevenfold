@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { hasPassword, loginProviders } from "@/components/features/auth/providers";
-import RecentAnalyses from "@/components/features/analyze/RecentAnalyses";
+import { clearCovers } from "@/features/deck-reader/ui/cover";
 import { ROUTES } from "@/lib/routes";
 
 export default function AccountPage() {
@@ -50,6 +50,8 @@ export default function AccountPage() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed to delete account (error ${res.status}).`);
       }
+      // The decks' cover images are cached in this browser, outside the account.
+      void clearCovers();
       await signOut();
       router.push(ROUTES.home);
     } catch (e) {
@@ -80,8 +82,6 @@ export default function AccountPage() {
           </p>
         </div>
       </section>
-
-      <RecentAnalyses />
 
       <section className="space-y-2">
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">

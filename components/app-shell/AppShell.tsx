@@ -13,7 +13,8 @@ import Sidebar from "./Sidebar";
 
 /**
  * The dashboard's frame: the sidebar beside the page from `lg` up; below that
- * a slim dark bar whose menu button opens the same sidebar as a drawer.
+ * a slim bar in the sidebar's colours whose menu button opens the same sidebar
+ * as a drawer.
  *
  * The frame is exactly one screen tall and `main` is the scroll region, so the
  * sidebar stays put and there is one scrollbar. A page that needs a scroll box
@@ -64,14 +65,14 @@ function MobileBar({ expanded, onOpen }: { expanded: boolean; onOpen: () => void
   const run = useLiveRun();
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-2 bg-ink px-3 lg:hidden">
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-ink/10 bg-paper px-3 lg:hidden">
       <button
         type="button"
         onClick={onOpen}
         aria-label="Open menu"
         aria-haspopup="dialog"
         aria-expanded={expanded}
-        className="grid h-9 w-9 place-items-center rounded-lg text-on-ink transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-2 focus-visible:outline-accent-bright"
+        className="grid h-9 w-9 place-items-center rounded-lg text-ink/70 transition-colors hover:bg-white/60 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
           <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
@@ -79,7 +80,7 @@ function MobileBar({ expanded, onOpen }: { expanded: boolean; onOpen: () => void
       </button>
       <Link
         href={ROUTES.home}
-        className="flex items-center gap-2 rounded-sm font-semibold tracking-tight text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-bright"
+        className="flex items-center gap-2 rounded-sm font-semibold tracking-tight text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <Image src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
         SevenFold
@@ -87,7 +88,7 @@ function MobileBar({ expanded, onOpen }: { expanded: boolean; onOpen: () => void
       {run && (
         <Link
           href={run.href}
-          className="ml-auto flex shrink-0 items-center gap-2 rounded-full border border-accent-bright/40 bg-accent-bright/10 px-3 py-1.5 text-sm font-medium text-accent-bright transition-colors hover:bg-accent-bright/20"
+          className="ml-auto flex shrink-0 items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent transition-colors hover:bg-accent/15"
         >
           <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
             <span className="absolute inline-flex h-full w-full rounded-full bg-current opacity-60 motion-safe:animate-ping" />
@@ -140,7 +141,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
           type="button"
           onClick={onClose}
           aria-label="Close menu"
-          className="absolute right-3 top-5 grid h-8 w-8 place-items-center rounded-lg text-on-ink transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:outline-2 focus-visible:outline-accent-bright"
+          className="absolute right-3 top-5 grid h-8 w-8 place-items-center rounded-lg text-ink/70 transition-colors hover:bg-white/60 hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
             <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />

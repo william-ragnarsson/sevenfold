@@ -1,8 +1,9 @@
 import { ROUTES } from "./routes";
 
 /**
- * The pages an analysis has: one per product, in sidebar order, plus the whole
- * report on one page at the end. Each lives at
+ * The pages an analysis has, in sidebar order: one per product (verdict,
+ * scorecard and feedback share Results), plus the whole report on one page at
+ * the end. Each lives at
  * `/dashboard/analyses/<id>/<slug>`; the analysis's overview is the bare
  * `/dashboard/analyses/<id>`.
  *
@@ -37,14 +38,10 @@ export const PRODUCT_PAGES = [
     description: "The competitors, mapped on the two axes that matter most.",
   },
   {
-    slug: "scorecard",
-    label: "Scorecard",
-    description: "Six 1–5 ratings and the invest or pass call they lead to.",
-  },
-  {
-    slug: "feedback",
-    label: "Feedback",
-    description: "What the deck does well, and what to fix before the next pitch.",
+    // The verdict, scorecard and feedback products share this page.
+    slug: "results",
+    label: "Results",
+    description: "The invest or pass call, the ratings behind it, and what to fix in the deck.",
   },
   {
     slug: "report",
