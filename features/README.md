@@ -31,15 +31,15 @@ app/                    routes
 
 ## Pages
 
-Each analysis is a set of pages, one per product, under
-`/dashboard/analyses/<id>`:
+Each analysis is a set of pages under `/dashboard/analyses/<id>`, one per
+product, except that verdict, scorecard and feedback share the Results page:
 
 | Path | What's on it |
 | --- | --- |
 | `/dashboard` | The dropzone, the last five analyses as cards, the account's numbers |
 | `/dashboard/analyses` | Every analysis on the account, and the dropzone |
-| `/dashboard/analyses/<id>` | The overview: the call, and one card per product saying how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One product's page: `deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, or `report` (everything) |
+| `/dashboard/analyses/<id>` | The overview: the call, and one card per page saying how far it got |
+| `/dashboard/analyses/<id>/<slug>` | One page: `deck`, `memo`, `founders`, `research`, `landscape`, `results` (the verdict, then the scorecard, then the feedback), or `report` (everything) |
 
 Inside an analysis the sidebar swaps the dashboard's pages for the analysis's
 tabs, each with a status dot. The pieces:
@@ -54,8 +54,9 @@ tabs, each with a status dot. The pieces:
 - `app/dashboard/analyses/[id]/layout.tsx` and `AnalysisFrame.tsx`: the header
   and loading states every page of an analysis shares.
 
-Old `/due-diligence/…` and `/dashboard/due-diligence/…` links redirect here
-(`next.config.ts`).
+Old `/due-diligence/…` and `/dashboard/due-diligence/…` links redirect here,
+and an analysis's old `scorecard` and `feedback` pages redirect to its
+`results` page (`next.config.ts`).
 
 `components/report/` holds the shared report primitives (`Row`, `Skeleton`,
 `SourceBadge`, `SourceLegend`, `SourceRow`, `SearchList`) and `components/ui/`

@@ -100,8 +100,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/auth/callback`, `/auth/confirm` | OAuth code exchange; email links |
 | `/dashboard` | Dropzone (plus the legacy import prompt), the five most recent analyses as cards, and "at a glance" metrics |
 | `/dashboard/analyses` | A dropzone (plus the legacy import prompt), then every analysis, each deletable, plus Clear all |
-| `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per product showing how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One product's page (`deck`, `memo`, `founders`, `research`, `landscape`, `scorecard`, `feedback`, `report`). The deck page takes `?slide=N` |
+| `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
+| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `research`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
 | `/dashboard/account` | Profile, password link, data export, the analyses list, account deletion |
 | `/dashboard/account/password` | Set or change the password |
@@ -118,8 +118,9 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
   trimmed deck text for MCP runs. Analyses imported from the old localStorage
   keep their old id. The route doesn't validate it.
 - Old paths redirect (307) to their dashboard pages (`next.config.ts`):
-  `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook` and
-  `/account/*`. Don't reuse them.
+  `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook`,
+  `/account/*`, and an analysis's `scorecard` and `feedback` pages (both go to
+  its `results` page). Don't reuse them.
 
 ### How a run works
 
@@ -561,7 +562,9 @@ but not all.
    - `ReportEnv` carries the PDF and slide links.
 10. **`lib/products.ts`:** add a `PRODUCT_PAGES` entry for the product's own
     page, before `report`. Array order is the order of the sidebar tabs and
-    the narrow-screen pills.
+    the narrow-screen pills. A product can share a page instead: verdict,
+    scorecard and feedback all sit on `results`, so a new product there only
+    adds its section id to that `PRODUCT_TABS` entry.
 11. **`components/features/analyze/productTabs.tsx`:**
     - Add a `PRODUCT_TABS` entry with sections, status, summary and `absent`.
     - Add an icon to `ProductTabIcon`. Nothing checks it, and a missing one
@@ -624,9 +627,9 @@ What exists, with known gaps. Slugs are the product page paths.
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty | No research of its own and no per-founder sources |
 | **Research** (`research/`) | `research` | Web research aimed at the deck's gaps: the searches, the sources and the notes | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
-| **Scorecard** (`scorecard/`) | `scorecard` | Six 1–5 ratings plus funding raised. The page also shows the verdict | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
-| **Feedback** (`feedback/`) | `feedback` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
-| **Verdict** (`verdict/`) | (on `scorecard`) | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
+| **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
+| **Feedback** (`feedback/`) | `results` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
+| **Verdict** (`verdict/`) | `results` | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
 | **Full report** | `report` | Every section on one page, with a chapters nav | — |
 
 ### Platform
@@ -640,13 +643,14 @@ What exists, with known gaps. Slugs are the product page paths.
 - **Analyses list** (`/dashboard/analyses`): a dropzone, then every analysis,
   each deletable along with its stored PDF, plus clear all.
 - **Inside an analysis:**
-  - Each product is a sidebar tab with a status dot:
+  - Each page is a sidebar tab with a status dot (verdict, scorecard and
+    feedback share the Results tab):
     - ready
     - running
     - didn't finish: it failed, or the run stopped before reaching it
     - not in this report: an old report from before the product, or nothing
       was found
-  - The overview has one card per product.
+  - The overview has one card per page.
   - Narrow screens get the tabs as pills.
 - **Live runs:**
   - Streamed over NDJSON with a phase stepper.
