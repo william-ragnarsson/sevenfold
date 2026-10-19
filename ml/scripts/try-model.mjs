@@ -15,7 +15,7 @@ import * as ort from "onnxruntime-node";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const NAMES = ["team", "technology", "marketSize", "valueProposition", "competitiveAdvantage", "socialImpact"];
-// Same band as BORDERLINE in components/features/form/VerdictPopup.tsx.
+// Same band as BORDERLINE in features/verdict/ui/VerdictPopup.tsx.
 const BORDERLINE = 0.05;
 
 function fail(message) {

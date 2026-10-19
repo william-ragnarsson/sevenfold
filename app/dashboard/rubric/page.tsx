@@ -81,7 +81,7 @@ export default function RubricPage() {
 
       <div className="pt-8">
         <Link
-          href={ROUTES.dueDiligence}
+          href={ROUTES.dashboard}
           className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-ink text-paper font-semibold hover:bg-accent transition-colors"
         >
           Analyze your deck →

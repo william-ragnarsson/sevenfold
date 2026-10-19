@@ -5,18 +5,8 @@ import { useAnalysis } from "./AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { isStalled } from "@/lib/analyses/status";
 import { analysisPath } from "@/lib/routes";
-
-function relativeTime(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime();
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
+import VerdictBadge from "@/features/verdict/ui/VerdictBadge";
+import { relativeTime } from "./elapsed";
 
 /** Every analysis on the account — click to reopen instantly, no re-run. */
 export default function RecentAnalyses() {
@@ -62,6 +52,7 @@ export default function RecentAnalyses() {
                   <span className="truncate font-medium text-ink">
                     {record.name || "Untitled deck"}
                   </span>
+                  {record.status === "done" && <VerdictBadge verdict={record.verdict} />}
                   {record.status !== "done" && (
                     <span
                       className={

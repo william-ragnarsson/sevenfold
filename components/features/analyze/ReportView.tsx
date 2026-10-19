@@ -2,9 +2,8 @@
 
 import type { RefObject } from "react";
 import ChaptersNav from "./ChaptersNav";
-import { REPORT_SECTIONS } from "./reportSections";
+import { REPORT_SECTIONS, type ReportEnv } from "./reportSections";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
-import type { PdfSource } from "@/components/features/deck/pdfSource";
 
 /**
  * The results layout: a sticky "chapters" nav beside a single column of
@@ -16,16 +15,16 @@ import type { PdfSource } from "@/components/features/deck/pdfSource";
 export default function ReportView({
   state,
   active,
-  pdf,
+  env,
   scrollRef,
 }: {
   state: AnalysisState;
   active: boolean;
-  /** The deck's PDF, for slide images; null when there isn't one to show. */
-  pdf: PdfSource | null;
+  /** The deck's PDF, slide links and the like; see `ReportEnv`. */
+  env: ReportEnv;
   scrollRef: RefObject<HTMLElement | null>;
 }) {
-  const sections = REPORT_SECTIONS.filter((s) => s.available(state, active));
+  const sections = REPORT_SECTIONS.filter((s) => !s.pageOnly && s.available(state, active));
 
   return (
     <div className="grid grid-cols-[24px_minmax(0,1fr)] gap-4 lg:grid-cols-[190px_minmax(0,1fr)] lg:gap-10">
@@ -33,7 +32,7 @@ export default function ReportView({
       <div className="min-w-0 space-y-8">
         {sections.map((s) => (
           <section key={s.id} id={s.id} className="scroll-mt-24">
-            {s.render(state, active, { pdf })}
+            {s.render(state, active, env)}
           </section>
         ))}
       </div>

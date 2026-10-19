@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { SEVERITY_META } from "@/components/features/form/severityMeta";
+import { SEVERITY_META } from "@/features/feedback/ui/severityMeta";
 
 /**
  * A fanned hand of feedback, teasing what comes back. Illustrative content, but

@@ -43,7 +43,9 @@ const nextConfig: NextConfig = {
   // query string carries over, so an emailed link keeps its `next=`.
   async redirects() {
     return [
-      { source: "/due-diligence/:path*", destination: "/dashboard/due-diligence/:path*", permanent: false },
+      { source: "/due-diligence/:path*", destination: "/dashboard/analyses/:path*", permanent: false },
+      // Each analysis became a set of product pages under /dashboard/analyses.
+      { source: "/dashboard/due-diligence/:path*", destination: "/dashboard/analyses/:path*", permanent: false },
       { source: "/model", destination: "/dashboard/model", permanent: false },
       { source: "/playbook", destination: "/dashboard/rubric", permanent: false },
       { source: "/account/:path*", destination: "/dashboard/account/:path*", permanent: false },

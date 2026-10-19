@@ -26,9 +26,10 @@ import { RateLimitError, recordFor, type AnalysisOwner, type AnalysisRecorder } 
 import { runAnalysis, type AnalysisOutcome } from "@/lib/analyses/run";
 import { isStalled, runStartedAt, STALLED_MESSAGE } from "@/lib/analyses/status";
 import { initialState, streamReducer, type AnalysisState } from "@/lib/diligence/stream-state";
-import { MIN_DECK_CHARS } from "@/lib/pdf/extract";
-import { deckCharCount, parseSlides } from "@/lib/deck";
-import { OCR_INSTRUCTION } from "@/lib/pdf/extractors/instruction";
+import { MIN_DECK_CHARS } from "@/features/deck-reader/pdf/extract";
+import { deckCharCount } from "@/features/deck-reader/markers";
+import { parseSlides } from "@/features/deck-reader/parser";
+import { OCR_INSTRUCTION } from "@/features/deck-reader/pdf/extractors/instruction";
 import { createSupabaseClientForToken } from "@/lib/supabase/token";
 import type { AnalysisStatus } from "@/lib/supabase/types";
 import { analysisPath } from "@/lib/routes";

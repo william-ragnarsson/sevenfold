@@ -1,4 +1,5 @@
-import { Row, SourceBadge } from "@/components/features/form/DueDiligenceFormView";
+import { Row } from "@/components/report/Row";
+import { SourceBadge } from "@/components/report/SourceBadge";
 import type { FieldSource } from "@/lib/diligence/types";
 
 const ROWS: { label: string; value: string; source: FieldSource }[] = [

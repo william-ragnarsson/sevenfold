@@ -37,7 +37,7 @@ const TONES = {
  * on the home page didn't, for no reason anyone chose.
  *
  * Rendered in the hero card (dark, compact), the home page's closing CTA (light,
- * elevated) and on /dashboard/due-diligence (light); it reads everything it
+ * elevated), the dashboard and /dashboard/analyses (light); it reads everything it
  * needs from the analysis context, so the call sites stay in sync without prop
  * drilling.
  */

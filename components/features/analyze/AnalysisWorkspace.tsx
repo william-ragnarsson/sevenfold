@@ -6,7 +6,7 @@ import { useAnalysis } from "@/components/features/analyze/AnalysisProvider";
 import LegacyImportPrompt from "@/components/features/auth/LegacyImportPrompt";
 
 /**
- * The analysis workspace used by /dashboard/due-diligence: the labelled upload + run
+ * The analysis workspace on /dashboard/analyses: the labelled upload + run
  * controls with saved analyses below. (The home page hoists the launcher into
  * the hero card instead and renders RecentAnalyses on its own.)
  *

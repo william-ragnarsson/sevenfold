@@ -19,7 +19,7 @@ export type AnalysisStatus = "running" | "done" | "error";
 export type AnalysisRow = {
   id: string;
   user_id: string;
-  /** SHA-256 of the deck PDF; the `/dashboard/due-diligence/[id]` URL segment. */
+  /** SHA-256 of the deck PDF; the `/dashboard/analyses/[id]` URL segment. */
   deck_hash: string;
   name: string;
   status: AnalysisStatus;

@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { InferenceSession as Session, Tensor as OrtTensor } from "onnxruntime-node";
-import type { InvestVerdict, Scorecard } from "@/lib/diligence/types";
+import type { Scorecard } from "@/features/scorecard/types";
+import type { InvestVerdict } from "@/features/verdict/types";
 
 /**
  * Custom invest / don't-invest model, trained on 765 of William's 800+

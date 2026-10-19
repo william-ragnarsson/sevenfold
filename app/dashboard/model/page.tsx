@@ -236,7 +236,7 @@ export default function ModelPage() {
 
       <div>
         <Link
-          href={ROUTES.dueDiligence}
+          href={ROUTES.dashboard}
           className="inline-flex items-center gap-2 rounded-full bg-ink px-7 py-3.5 font-semibold text-paper transition-colors hover:bg-accent"
         >
           Analyze your deck →

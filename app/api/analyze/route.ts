@@ -1,7 +1,7 @@
 import type { ProgressEvent } from "@/lib/diligence/types";
 import { RateLimitError, recordFor, requireAccount, SignInRequiredError } from "@/lib/analyses/persist";
 import { logEvent, runAnalysis } from "@/lib/analyses/run";
-import { countPdfPages } from "@/lib/pdf/extract";
+import { countPdfPages } from "@/features/deck-reader/pdf/extract";
 import { getSampleDeck } from "@/lib/samples/airbnb";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
