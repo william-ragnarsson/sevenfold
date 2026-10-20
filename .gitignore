@@ -51,3 +51,6 @@ next-env.d.ts
 /ml/.pytest_cache/
 /ml/.ruff_cache/
 __pycache__/
+
+# OpenNext (AWS Lambda) build output
+/.open-next/

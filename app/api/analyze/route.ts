@@ -3,6 +3,7 @@ import { RateLimitError, recordFor, requireAccount, SignInRequiredError } from "
 import { logEvent, runAnalysis } from "@/lib/analyses/run";
 import { countPdfPages } from "@/lib/pdf/extract";
 import { getSampleDeck } from "@/lib/samples/airbnb";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/upload";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -11,11 +12,17 @@ const SHOW_COSTS = process.env.NODE_ENV !== "production";
 export const runtime = "nodejs";
 export const maxDuration = 300; // web research can take a while
 
+// A proxy in front of the function (CloudFront on AWS) drops a response that
+// sends nothing for 30–60s, and the scorecard and landscape stages can run
+// that long without an event. Dropping the connection aborts the run.
+const HEARTBEAT_MS = 10_000;
+
 /**
  * Streams the analysis as NDJSON: one JSON `ProgressEvent` per line. The client
  * reads the stream and renders live progress; the final line is either a
- * `{ type: "report" }` or `{ type: "error" }` event. Keeping bytes flowing also
- * prevents proxies from killing the long-lived connection mid-research.
+ * `{ type: "report" }` or `{ type: "error" }` event. Between events, a blank
+ * line every few seconds keeps proxies from killing the long-lived connection
+ * mid-research; `readProgressStream` skips blank lines.
  */
 export async function POST(req: Request) {
   const encoder = new TextEncoder();
@@ -24,20 +31,27 @@ export async function POST(req: Request) {
     async start(controller) {
       let closed = false;
 
-      // Serialize one event to an NDJSON line and enqueue it. Guarded: if the
-      // client disconnected (controller closed), stop trying to enqueue instead
-      // of throwing — the run itself carries on and still gets saved.
-      const enqueue = (event: ProgressEvent) => {
-        // Usage events are a dev-only feature — never let them reach a
-        // production client, regardless of what's enqueued elsewhere.
-        if (event.type === "usage" && !SHOW_COSTS) return;
+      // Guarded: if the client disconnected (controller closed), stop trying
+      // to enqueue instead of throwing — the run itself carries on and still
+      // gets saved.
+      const write = (chunk: string) => {
         if (closed) return;
         try {
-          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
+          controller.enqueue(encoder.encode(chunk));
         } catch {
           closed = true; // client went away — stop enqueuing, let work finish
         }
       };
+
+      // Serialize one event to an NDJSON line and enqueue it.
+      const enqueue = (event: ProgressEvent) => {
+        // Usage events are a dev-only feature — never let them reach a
+        // production client, regardless of what's enqueued elsewhere.
+        if (event.type === "usage" && !SHOW_COSTS) return;
+        write(JSON.stringify(event) + "\n");
+      };
+
+      const heartbeat = setInterval(() => write("\n"), HEARTBEAT_MS);
 
       // For failures before the pipeline starts, which have nothing to save.
       const reject = (message: string) => {
@@ -82,6 +96,7 @@ export async function POST(req: Request) {
 
           if (!(file instanceof File)) return reject("No PDF uploaded.");
           if (file.type !== "application/pdf") return reject("File must be a PDF.");
+          if (file.size > MAX_UPLOAD_BYTES) return reject(`File exceeds size limit: max ${MAX_UPLOAD_MB}MB.`);
 
           buffer = Buffer.from(await file.arrayBuffer());
           name = file.name;
@@ -112,6 +127,7 @@ export async function POST(req: Request) {
         console.error("[analyze] failed:", err);
         reject("Analysis failed. Please try again.");
       } finally {
+        clearInterval(heartbeat);
         if (!closed) {
           try {
             controller.close();

@@ -1,0 +1,21 @@
+# Copy to terraform.tfvars (gitignored) and fill in. Values come from your
+# local .env; .env.example explains each one.
+
+alert_email = "you@example.com"
+
+# Leave empty for now: the site comes up on its *.cloudfront.net address.
+# README → "Custom domain" covers switching to a subdomain.
+domain_name = ""
+
+supabase_url             = "https://<project-ref>.supabase.co"
+supabase_publishable_key = "sb_publishable_..."
+
+# Server-only secrets. Terraform stores them in its state file, which is why
+# that bucket is private and encrypted.
+app_env = {
+  ANTHROPIC_API_KEY         = ""
+  GEMINI_API_KEY            = ""
+  SUPABASE_SERVICE_ROLE_KEY = ""
+  # Any model or budget override from .env.example, e.g.
+  # RESEARCH_MODEL = "claude-haiku-4-5"
+}

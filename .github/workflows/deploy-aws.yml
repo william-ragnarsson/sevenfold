@@ -1,0 +1,80 @@
+# Builds the app for AWS and ships it to the stack in infra/. Vercel keeps
+# deploying main on its own; this runs beside it.
+#
+# Skipped (not failed) until infra/ is applied and its repository variables
+# are set: see infra/README.md.
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # the short-lived token AWS trusts in place of stored keys
+
+# One deploy at a time. A newer push waits for the running one to finish.
+concurrency:
+  group: deploy-aws
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: vars.AWS_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Baked into the JavaScript at build time.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+      BUCKET: ${{ vars.AWS_ASSETS_BUCKET }}
+      SERVER_FUNCTION: ${{ vars.AWS_SERVER_FUNCTION }}
+      IMAGE_FUNCTION: ${{ vars.AWS_IMAGE_FUNCTION }}
+      DISTRIBUTION_ID: ${{ vars.AWS_DISTRIBUTION_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24 # the functions' runtime, infra/lambda.tf
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build:aws
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      # Files go up before the new code, so the scripts new pages link to are
+      # already there. Old hashed chunks stay for visitors on the previous
+      # version; they're tiny.
+      - name: Upload files
+        run: |
+          aws s3 sync .open-next/assets/_next "s3://$BUCKET/_assets/_next" --no-progress \
+            --cache-control "public,max-age=31536000,immutable"
+          aws s3 sync .open-next/assets "s3://$BUCKET/_assets" --no-progress --exclude "_next/*" --delete \
+            --cache-control "public,max-age=0,s-maxage=31536000,must-revalidate"
+          aws s3 sync .open-next/cache "s3://$BUCKET/_cache" --no-progress
+
+      # -y keeps the bundle's symlink a symlink instead of a second copy of
+      # onnxruntime: 16MB instead of 24MB, against Lambda's 50MB upload limit.
+      - name: Update functions
+        run: |
+          deploy() {
+            (cd "$2" && zip -qry "$RUNNER_TEMP/$1.zip" .)
+            aws lambda update-function-code --function-name "$1" \
+              --zip-file "fileb://$RUNNER_TEMP/$1.zip" --query LastUpdateStatus --output text
+            aws lambda wait function-updated --function-name "$1"
+          }
+          deploy "$SERVER_FUNCTION" .open-next/server-functions/default
+          deploy "$IMAGE_FUNCTION" .open-next/image-optimization-function
+
+      - name: Clear CloudFront cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" \
+            --query Invalidation.Id --output text

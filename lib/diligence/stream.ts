@@ -3,7 +3,8 @@ import type { ProgressEvent } from "@/lib/diligence/types";
 /**
  * Reads an NDJSON `ProgressEvent` stream (one JSON object per line) and yields
  * each event as it arrives. Buffers partial lines across chunk boundaries, since
- * a single network chunk may split a line or carry several.
+ * a single network chunk may split a line or carry several. Blank lines are the
+ * server's keep-alive heartbeat and are skipped.
  */
 export async function* readProgressStream(
   body: ReadableStream<Uint8Array>,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_MB } from "@/lib/upload";
 
 type DropzoneProps = {
   file: File | null;
@@ -45,11 +46,6 @@ const TONES = {
   },
 } as const;
 
-// Vercel's serverless functions cap request bodies at ~4.5MB regardless of
-// Next.js config, so we reject oversized files here instead of letting the
-// upload fail with an opaque 413 from the platform.
-const MAX_SIZE_MB = 4;
-
 /**
  * Generic file dropzone with a rounded SVG dashed border that hugs the
  * corners (a plain CSS dashed border can't follow border-radius cleanly).
@@ -81,8 +77,9 @@ export default function Dropzone({
       setError("Unsupported file type. Upload a PDF.");
       return;
     }
-    if (f.size > MAX_SIZE_MB * 1024 * 1024) {
-      setError(`File exceeds size limit: max ${MAX_SIZE_MB}MB.`);
+    // Refused here rather than as an opaque 413 from the host (see lib/upload.ts).
+    if (f.size > MAX_UPLOAD_BYTES) {
+      setError(`File exceeds size limit: max ${MAX_UPLOAD_MB}MB.`);
       return;
     }
     setError("");
@@ -141,7 +138,7 @@ export default function Dropzone({
             <div className={`mx-auto grid place-items-center rounded-2xl text-xl ${t.icon} ${iconSize}`}>↑</div>
             <p className={`text-lg font-semibold ${t.title}`}>Drop your pitch deck</p>
             <p className={`text-sm ${error ? t.error : t.hint}`}>
-              {error || `PDF · up to ${MAX_SIZE_MB}MB · click or drag`}
+              {error || `PDF · up to ${MAX_UPLOAD_MB}MB · click or drag`}
             </p>
           </div>
         )}
