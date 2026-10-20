@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import AnalysisProvider from "@/components/features/analyze/AnalysisProvider";
 import AuthProvider from "@/components/features/auth/AuthProvider";
 import "./globals.css";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <AnalysisProvider>{children}</AnalysisProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
