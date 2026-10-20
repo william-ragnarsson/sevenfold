@@ -102,7 +102,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/dashboard` | New analysis and sample buttons in the header (a PDF dropped anywhere on the page runs too), the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
 | `/dashboard/analyses` | The same header buttons and the legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
 | `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `research`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. The deck page takes `?slide=N` |
+| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. Research has no page: its Sources close the memo page. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
 | `/dashboard/account` | Profile, password link, data export, account deletion |
 | `/dashboard/account/password` | Set or change the password |
@@ -121,8 +121,9 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
   keep their old id. The route doesn't validate it.
 - Old paths redirect (307) to their dashboard pages (`next.config.ts`):
   `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook`,
-  `/account/*`, and an analysis's `scorecard` and `feedback` pages (both go to
-  its `results` page). Don't reuse them.
+  `/account/*`, an analysis's `scorecard` and `feedback` pages (both go to its
+  `results` page), and its `research` page (to its `memo` page). Don't reuse
+  them.
 
 ### How a run works
 
@@ -717,9 +718,9 @@ What exists, with known gaps. Slugs are the product page paths.
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
 | **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it (deck-sourced fields only). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`; a live run moves it along. A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. Not in the MCP markdown. No export. No fallback OCR model |
-| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from. Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
+| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from. Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF. The page ends with research's Sources | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty. Each founder shows its source and, from the deck, the slides cited. Editable in the memo | No research of its own. The Founders page is read-only. One source per founder, not per detail |
-| **Research** (`research/`) | `research` | Web research aimed at the deck's gaps: the searches, the sources and the notes | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
+| **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
 | **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
 | **Feedback** (`feedback/`) | `results` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
@@ -741,7 +742,7 @@ What exists, with known gaps. Slugs are the product page paths.
   asks to confirm.
 - **Inside an analysis:**
   - Each page is a sidebar tab with a status dot (verdict, scorecard and
-    feedback share the Results tab):
+    feedback share the Results tab, and research shows on Memo):
     - ready
     - running
     - didn't finish: it failed, or the run stopped before reaching it

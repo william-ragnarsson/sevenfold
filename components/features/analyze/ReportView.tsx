@@ -7,8 +7,8 @@ import type { AnalysisState } from "@/lib/diligence/stream-state";
 
 /**
  * The results layout: a sticky "chapters" nav beside a single column of
- * full-width sections stacked top to bottom (verdict → feedback → scorecard →
- * research → document, driven by the REPORT_SECTIONS registry). Everything is
+ * full-width sections stacked top to bottom (verdict → deck → … → document →
+ * sources, driven by the REPORT_SECTIONS registry). Everything is
  * visible at once — the nav gives structure and lets you jump around a long,
  * calmly-spaced scroll. Used for both the live run and the finished report.
  */
