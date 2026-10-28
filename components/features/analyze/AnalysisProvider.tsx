@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useReducer,
   useRef,
   useState,
@@ -31,6 +32,30 @@ const EMPTY_HISTORY: AnalysisSummary[] = [];
 
 type Status = "idle" | "loading" | "done" | "error";
 
+/**
+ * At most this many decks wait or run at once, the account's daily allowance
+ * of new analyses (`DAILY_LIMIT_IDENTIFIED`, `lib/analyses/persist.ts`).
+ */
+export const MAX_QUEUE = 25;
+
+/** One deck of a batch, from being added until the batch is dismissed. */
+export interface QueuedDeck {
+  /** The deck's hash: its report's id, and the entry's key. */
+  id: string;
+  file: File;
+  /** `existing`: the deck already had a finished report, so nothing ran. */
+  status: "queued" | "running" | "done" | "existing" | "failed" | "cancelled";
+  error?: string;
+}
+
+/** How one call to `run` ended. */
+type RunOutcome = Pick<QueuedDeck, "status" | "error">;
+
+/** Waiting or running: not settled yet. */
+export function isPending(deck: QueuedDeck): boolean {
+  return deck.status === "queued" || deck.status === "running";
+}
+
 interface AnalysisContextValue {
   file: File | null;
   setFile: (file: File | null) => void;
@@ -52,8 +77,26 @@ interface AnalysisContextValue {
   start: (opts?: { force?: boolean; file?: File }) => void;
   /** Start analysis for a built-in sample deck — no upload, no file needed. */
   startSample: (sample: SampleDeck, opts?: { force?: boolean }) => void;
-  /** Aborts an in-flight run (if any) and clears back to the dropzone state. */
+  /**
+   * Aborts an in-flight run (if any) and clears back to the dropzone state. A
+   * batch's run counts as cancelled, and the next deck in the queue starts.
+   */
   stop: () => void;
+  /**
+   * The decks added together, in order, each run once the run before it is
+   * over. Kept in this tab only: a reload drops the waiting ones.
+   */
+  queue: QueuedDeck[];
+  /**
+   * Adds decks to the queue. One already waiting or running is skipped, and
+   * one that has a finished report is opened from it rather than run again.
+   * Resolves to how many didn't fit under `MAX_QUEUE`.
+   */
+  enqueue: (files: File[]) => Promise<number>;
+  /** Cancels every deck still waiting. The one running carries on. */
+  cancelQueue: () => void;
+  /** Drops the finished, failed and cancelled decks from the queue. */
+  clearQueue: () => void;
   history: AnalysisSummary[];
   /** True while the first fetch for the current user is in flight. */
   historyLoading: boolean;
@@ -84,6 +127,12 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [stream, dispatch] = useReducer(streamReducer, undefined, initialState);
   const abortRef = useRef<AbortController | null>(null);
+  const [queue, setQueue] = useState<QueuedDeck[]>([]);
+  // The queue as of the last change, for the async code that reads it after
+  // an await; `queue` is the same list for rendering.
+  const queueRef = useRef<QueuedDeck[]>([]);
+  // The batch deck being run, so the queue starts one deck at a time.
+  const runningRef = useRef<string | null>(null);
   const router = useRouter();
 
   const userId = user?.id ?? null;
@@ -129,7 +178,26 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
    * after that, including naming and persistence, is the route's job now.
    */
   const run = useCallback(
-    async ({ id, body, force }: { id: string; body: FormData; force?: boolean }) => {
+    async ({
+      id,
+      body,
+      force,
+      open = true,
+    }: {
+      id: string;
+      body: FormData;
+      force?: boolean;
+      /** Go to the report. A batch's decks run without taking the page over. */
+      open?: boolean;
+    }): Promise<RunOutcome> => {
+      // One run at a time: this one takes over from any still going, before
+      // anything else, so that one can't write into this one's stream or
+      // finish after this one has started. Owning the controller from here on
+      // also lets a stop during the dedupe check below call the run off.
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       // Claim the run and navigate *first*. The dedupe check below is a
       // round-trip, and doing it before any state changed left the button
       // sitting there looking dead. Both outcomes land on this same URL anyway.
@@ -142,7 +210,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       setStatus("loading");
       setError("");
       dispatch({ type: "reset" });
-      router.push(analysisPath(id));
+      if (open) router.push(analysisPath(id));
 
       // A convenience, not a gate, so it isn't allowed to take the run down
       // with it — and now that the loading state is already on screen, an
@@ -152,19 +220,17 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
         // copy rather than spending another few minutes on the same answer.
         if (!force) {
           const existing = await getAnalysis(id);
+          if (controller.signal.aborted) return { status: "cancelled" };
           if (existing?.status === "done") {
             setCurrentId(null);
             setStatus("idle");
-            return;
+            return { status: "existing" };
           }
         }
       } catch (err) {
         console.warn("[analysis] pre-flight failed, running anyway:", err);
       }
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+      if (controller.signal.aborted) return { status: "cancelled" };
 
       try {
         const res = await fetch("/api/analyze", { method: "POST", body, signal: controller.signal });
@@ -172,6 +238,8 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
 
         let sawReport = false;
         for await (const event of readProgressStream(res.body)) {
+          // Events already read when a stop came in belong to a run that's over.
+          if (controller.signal.aborted) return { status: "cancelled" };
           dispatch({ type: "event", event });
           if (event.type === "report") sawReport = true;
           else if (event.type === "error") throw new Error(event.message);
@@ -182,11 +250,15 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
 
         // The route saved the report as it streamed; just pick up the new row.
         await refreshHistory();
+        return { status: "done" };
       } catch (e) {
-        if (controller.signal.aborted) return; // explicit stop / navigated away
-        setError(e instanceof Error ? e.message : "Something went wrong.");
+        // An explicit stop, a run that took over, or navigating away.
+        if (controller.signal.aborted) return { status: "cancelled" };
+        const message = e instanceof Error ? e.message : "Something went wrong.";
+        setError(message);
         setStatus("error");
         await refreshHistory();
+        return { status: "failed", error: message };
       }
     },
     [router, refreshHistory],
@@ -251,6 +323,88 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     dispatch({ type: "reset" });
   }, []);
 
+  const commitQueue = useCallback((next: QueuedDeck[]) => {
+    queueRef.current = next;
+    setQueue(next);
+  }, []);
+
+  const updateQueued = useCallback(
+    (id: string, patch: Partial<QueuedDeck>) => {
+      commitQueue(queueRef.current.map((deck) => (deck.id === id ? { ...deck, ...patch } : deck)));
+    },
+    [commitQueue],
+  );
+
+  const enqueue = useCallback(
+    async (files: File[]) => {
+      if (files.length === 0) return 0;
+      // Without an account the first deck waits for sign-up like a single
+      // pick does; the stash holds one. The dashboard, where several can be
+      // picked, is behind sign-in anyway.
+      if (await deferUntilSignedIn({ file: files[0] })) return 0;
+
+      const picked = await Promise.all(files.map(async (file) => ({ id: await hashFile(file), file })));
+      const current = queueRef.current;
+      const pending = current.filter(isPending);
+      // Picked twice, already waiting, or the run going on now: once is enough.
+      const taken = new Set(pending.map((deck) => deck.id));
+      if (status === "loading" && currentId) taken.add(currentId);
+
+      const added: QueuedDeck[] = [];
+      let left = 0;
+      for (const { id, file } of picked) {
+        if (taken.has(id)) continue;
+        taken.add(id);
+        if (pending.length + added.length >= MAX_QUEUE) left++;
+        else added.push({ id, file, status: "queued" });
+      }
+      // A deck added again after it settled moves to the end as a new entry.
+      const readded = new Set(added.map((deck) => deck.id));
+      commitQueue([...current.filter((deck) => !readded.has(deck.id)), ...added]);
+      return left;
+    },
+    [deferUntilSignedIn, status, currentId, commitQueue],
+  );
+
+  const cancelQueue = useCallback(() => {
+    commitQueue(
+      queueRef.current.map((deck) => (deck.status === "queued" ? { ...deck, status: "cancelled" } : deck)),
+    );
+  }, [commitQueue]);
+
+  const clearQueue = useCallback(() => {
+    commitQueue(queueRef.current.filter(isPending));
+  }, [commitQueue]);
+
+  /**
+   * Runs the next waiting deck, once no run is going: one at a time, because
+   * a second run would abort the first. Each runs in the background, without
+   * taking the page over, and a run started some other way in the meantime
+   * (the sample, say) goes first.
+   */
+  const runNext = useEffectEvent(async () => {
+    if (runningRef.current || status === "loading") return;
+    const next = queueRef.current.find((deck) => deck.status === "queued");
+    if (!next) return;
+
+    runningRef.current = next.id;
+    updateQueued(next.id, { status: "running" });
+    // As `start` does: the file's name until the company's is known, and its
+    // slides drawn from the local copy.
+    setFileState(next.file);
+    setLocalDeck(pdfFromFile(next.file, next.id));
+    const body = new FormData();
+    body.append("file", next.file);
+    const outcome = await run({ id: next.id, body, open: false });
+    // Freed before the update, so the render that update causes runs the next.
+    runningRef.current = null;
+    updateQueued(next.id, outcome);
+  });
+
+  useEffect(() => {
+    void runNext();
+  }, [status, queue]);
+
   const deleteRecord = useCallback(
     async (rowId: string) => {
       // Optimistic, then reconciled: a delete that fails puts the row back
@@ -279,6 +433,10 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     start,
     startSample,
     stop,
+    queue,
+    enqueue,
+    cancelQueue,
+    clearQueue,
     history,
     historyLoading,
     refreshHistory,

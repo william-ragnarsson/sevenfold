@@ -46,7 +46,8 @@ const TONES = {
  * inside an anchor.
  */
 export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisCardProps) {
-  const { stream, currentId, file, stop } = useAnalysis();
+  const { stream, currentId, file, stop, queue } = useAnalysis();
+  const waiting = queue.filter((deck) => deck.status === "queued").length;
   if (!currentId) return null;
 
   const t = TONES[tone];
@@ -94,13 +95,15 @@ export default function CurrentAnalysisCard({ tone = "light" }: CurrentAnalysisC
       </div>
 
       <div className={`mt-4 flex items-center justify-between gap-3 border-t py-2 pl-4 pr-2 sm:pl-5 sm:pr-3 ${t.divider}`}>
-        <span className={`truncate text-xs ${t.count}`}>Runs in the background</span>
+        <span className={`truncate text-xs ${t.count}`}>
+          {waiting > 0 ? `${waiting} more in the queue` : "Runs in the background"}
+        </span>
         <button
           type="button"
           onClick={stop}
           className={`relative z-10 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${t.abort}`}
         >
-          Abort analysis
+          {waiting > 0 ? "Skip this deck" : "Abort analysis"}
         </button>
       </div>
     </div>

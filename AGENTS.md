@@ -83,7 +83,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/routes.ts` | Page paths and page lists only: `ROUTES`, `analysisPath`, `deckSlidePath`, `signInPath`, `safeNext`, `isDashboardPath` (what `proxy.ts` gates), `DASHBOARD_PAGES` (the sidebar's dashboard links), `PRODUCTS` (the nav bar's Products menu), and the slide param helpers. API, `/auth/*` and `/mcp` paths are written inline where they're used, and `supabase/templates/*.html` hardcode `/auth/confirm`, `/dashboard` and `/dashboard/account/password` |
 | `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR. `coverPage` is the page its card shows (2, since page 1 is a laptop mockup) |
 | `lib/supabase/` | Browser, server, admin and bearer-token clients, plus row types |
-| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis and its memo edits), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `MemoToolbar` (the memo header's save status and download), `MemoExportButton` and `MemoPdf` (the memo as a PDF, loaded on click). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
+| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run, and the queue of decks waiting behind it), `ReportProvider` (the open analysis and its memo edits), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `MemoToolbar` (the memo header's save status and download), `MemoExportButton` and `MemoPdf` (the memo as a PDF, loaded on click). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus PDFs dropped anywhere on the page; one PDF or several), `CurrentAnalysisCard` (the run going on, with its abort button), `AnalysisQueue` (the queued decks, a line each, under that card). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
 | `components/app-shell/` | Dashboard layout and sidebar. The sidebar swaps to an analysis's tabs when one is open |
 | `components/features/{auth,hero,landing,model}/` | Sign-in and accounts, the landing page, and the `/dashboard/model` explainer |
 | `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourcePicker`, `SourceRow`, `SlideChips`, `EditableText`, `SearchList`; `Card`, `Dropzone`, whose `deckFileError` is the PDF type and size check `NewAnalysisActions` reuses). The only components a product's `ui/` may import |
@@ -100,8 +100,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/sign-in` | Google or email/password |
 | `/oauth/consent` | Consent screen when Claude connects over MCP |
 | `/auth/callback`, `/auth/confirm` | OAuth code exchange; email links |
-| `/dashboard` | New analysis and sample buttons in the header (a PDF dropped anywhere on the page runs too), the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
-| `/dashboard/analyses` | The same header buttons and the legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
+| `/dashboard` | New analysis and sample buttons in the header (one PDF or several; PDFs dropped anywhere on the page run too), the live run's card and the queue while there are any, the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
+| `/dashboard/analyses` | The same header buttons, live run card, queue and legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
 | `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
 | `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. Research has no page: its Sources close the memo page. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
@@ -128,11 +128,14 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 
 ### How a run works
 
-1. The landing page's dropzones (`AnalysisLauncher`) and the dashboard pages'
-   New analysis button and page-wide drop target (`NewAnalysisActions`) call
-   `AnalysisProvider.start` with the file. The sample sticker and the "Try the
-   sample deck" button call `startSample`. `NewAnalysisActions` turns itself
-   off while a run is live, since a second `start` aborts the first.
+1. The landing page's dropzones (`AnalysisLauncher`) call
+   `AnalysisProvider.start` with the file. So do the dashboard pages' New
+   analysis button and page-wide drop target (`NewAnalysisActions`), for one
+   PDF with nothing running or waiting. Several PDFs, or any while a run is
+   live, go to `enqueue` instead ([Running several
+   decks](#running-several-decks)). The sample sticker and the "Try the
+   sample deck" button call `startSample`. The dashboard's sample button is
+   off while anything runs or waits, since a second `start` aborts the first.
    - Signed out: the deck is stashed in IndexedDB and the user is sent to
      sign in. `ResumeStashedDeck` picks it up afterwards.
    - Otherwise: it navigates to `/dashboard/analyses/<id>`. If that deck
@@ -194,6 +197,40 @@ MCP runs (`lib/mcp/server.ts`: `analyze_deck`, `get_analysis`,
   (research shows only as its sources, at most 25, `MAX_SOURCES`), and drops
   feedback items' slide citations. Memo values and founders carry their
   source tag, and a deck one the slides it was read from (`citedSlides`).
+
+### Running several decks
+
+`NewAnalysisActions` takes several PDFs at once, picked or dropped. They join
+`AnalysisProvider`'s queue (`queue`, `enqueue`, `cancelQueue`, `clearQueue`)
+and run one at a time, each through the same `run` as a single deck.
+
+- The queue lives in the browser tab and isn't saved. A reload drops the
+  waiting decks and aborts the one running, which is saved as failed.
+- Each deck runs in the background, without opening its report. The live
+  card (`CurrentAnalysisCard`), the queue's list (`AnalysisQueue`) and the
+  sidebar's run link (`useLiveRun`'s `queued`) show where the batch stands.
+- Each deck ends `done`, `existing` (it already had a `done` row, so it
+  wasn't run again), `failed` (with the server's message) or `cancelled`.
+- Files that aren't PDFs, or are over the size limit, are skipped with a
+  message. A deck already waiting or running isn't added again. At most
+  `MAX_QUEUE` (25, the account's daily limit) wait at once, and the rest are
+  turned away with a count.
+- Stopping the deck that's running ("Skip this deck" on its card) cancels only
+  that one, and the next starts. "Cancel the rest" cancels the waiting ones
+  and leaves the running one alone.
+- A run started another way in the meantime (the landing page, a stashed
+  deck) aborts the batch's deck, which counts as cancelled. The queue picks
+  up again once that run ends.
+- A report page open on the deck that's running switches to its saved row
+  when the next deck starts.
+- Every deck is a full run, so N decks cost N runs, and each new deck counts
+  toward the 25-a-day limit. Past it, each further deck fails with the
+  limit's message.
+- Signed out, the first deck is stashed as a single pick is, and the rest are
+  dropped. The dashboard is behind sign-in, so only a stale session gets
+  here.
+- With accounts off nothing is saved, so a finished deck's report is gone
+  once the next deck starts.
 
 ### Editing a memo
 
@@ -772,8 +809,10 @@ What exists, with known gaps. Slugs are the product page paths.
 ### Platform
 
 - **Dashboard** (`/dashboard`):
-  - New analysis (opens the file picker and runs the PDF picked), the sample
-    deck, and a PDF dropped anywhere on the page
+  - New analysis (opens the file picker and runs the PDFs picked), the sample
+    deck, and PDFs dropped anywhere on the page. One PDF opens its report as
+    it runs; several queue and run one after another
+  - while a run is going or decks wait, the live run's card and the queue
   - metrics: decks analysed, last 30 days, recommended (invest calls), and
     average score (the invest model's score out of 100, over the decks it
     scored)
@@ -795,6 +834,8 @@ What exists, with known gaps. Slugs are the product page paths.
 - **Live runs:**
   - Streamed over NDJSON with a phase stepper.
   - A run survives moving between pages.
+  - Several decks run one at a time from a queue ([Running several
+    decks](#running-several-decks)).
   - Runs started elsewhere are polled.
   - With accounts on, a deck that already has a finished analysis opens it
     instead of re-running.
@@ -830,7 +871,9 @@ What exists, with known gaps. Slugs are the product page paths.
 - **Dev only:** a cost sidebar with per-stage cost during a live run.
 
 Not built: rerunning a single product, saved usage or cost history, a demo
-mode, and JS tests.
+mode, JS tests, running several decks at once (the queue runs them one at a
+time), a queue that survives a reload, and picking several decks on the
+landing page.
 
 ### Known issues
 

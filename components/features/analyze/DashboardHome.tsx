@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import AnalysisCard from "./AnalysisCard";
+import AnalysisQueue from "./AnalysisQueue";
 import { useAnalysis } from "./AnalysisProvider";
 import CurrentAnalysisCard from "./CurrentAnalysisCard";
 import { useAuth } from "@/components/features/auth/AuthProvider";
@@ -57,6 +58,7 @@ export default function DashboardHome() {
   return (
     <div className="space-y-10">
       {status === "loading" && <CurrentAnalysisCard />}
+      <AnalysisQueue />
 
       <LegacyImportPrompt onImported={() => void refreshHistory()} />
 

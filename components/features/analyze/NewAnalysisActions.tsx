@@ -4,36 +4,47 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { deckFileError, MAX_SIZE_MB } from "@/components/ui/Dropzone";
 import { AIRBNB_SAMPLE } from "@/lib/samples/airbnb";
-import { useAnalysis } from "./AnalysisProvider";
+import { isPending, MAX_QUEUE, useAnalysis } from "./AnalysisProvider";
 
 const BUSY = "An analysis is already running";
 
 /**
  * How the dashboard pages start a run: "New analysis" opens the file picker and
- * runs the PDF picked, "Try the sample deck" runs the bundled one, and a PDF
- * dropped anywhere on the page runs too. One run at a time: while one is going
- * everything here is off, because a second start would abort the first.
+ * runs the PDFs picked, "Try the sample deck" runs the bundled one, and PDFs
+ * dropped anywhere on the page run too. One PDF, with nothing running, opens
+ * its report as it runs. Several, or any while a run is going, join the queue
+ * (`AnalysisQueue`) and run one after another. The sample is off while anything
+ * runs or waits, because starting it would abort the deck running.
  *
  * The landing page keeps the big dropzone (`AnalysisLauncher`) instead.
  */
 export default function NewAnalysisActions() {
-  const { status, setFile, start, startSample } = useAnalysis();
-  const busy = status === "loading";
+  const { status, setFile, start, startSample, queue, enqueue } = useAnalysis();
+  const busy = status === "loading" || queue.some(isPending);
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
 
-  function run(file: File | undefined) {
-    if (!file || busy) return;
-    const problem = deckFileError(file);
-    setError(problem ?? "");
-    if (problem) return;
-    // So the live card and the report can show the file's name before the company's is known.
-    setFile(file);
-    start({ file });
+  async function run(files: File[]) {
+    if (files.length === 0) return;
+    const rejected = files.filter((file) => deckFileError(file) !== null);
+    const decks = files.filter((file) => !rejected.includes(file));
+    const problems: string[] = [];
+    // One file keeps the dropzone's own message; several get a count.
+    if (rejected.length > 0) problems.push(files.length === 1 ? deckFileError(files[0])! : skipped(rejected));
+
+    if (decks.length === 1 && !busy) {
+      // So the live card and the report can show the file's name before the company's is known.
+      setFile(decks[0]);
+      start({ file: decks[0] });
+    } else if (decks.length > 0) {
+      const left = await enqueue(decks);
+      if (left > 0) problems.push(`${left} more didn't fit: at most ${MAX_QUEUE} decks can wait at once.`);
+    }
+    setError(problems.join(" "));
   }
 
-  const onDrop = useEffectEvent((file: File | undefined) => run(file));
+  const onDrop = useEffectEvent((files: File[]) => void run(files));
 
   // The whole window is the drop target. Every file drag is cancelled, busy or
   // not, or the browser would open the PDF in place of the page. The depth count
@@ -60,7 +71,8 @@ export default function NewAnalysisActions() {
       e.preventDefault();
       depth = 0;
       setDragging(false);
-      onDrop(e.dataTransfer?.files[0]);
+      // Copied now: the drop's file list empties once the event is over.
+      onDrop(Array.from(e.dataTransfer?.files ?? []));
     };
     window.addEventListener("dragenter", enter);
     window.addEventListener("dragover", over);
@@ -89,22 +101,23 @@ export default function NewAnalysisActions() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          title={busy ? BUSY : undefined}
-          className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-ink"
+          title={busy ? "Runs once the decks before it have finished" : "Pick one PDF or several"}
+          className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-accent"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
             <path d="M12 5v14M5 12h14" strokeLinecap="round" />
           </svg>
-          New analysis
+          {busy ? "Add to queue" : "New analysis"}
         </button>
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf"
+          multiple
           className="hidden"
           onChange={(e) => {
-            run(e.target.files?.[0]);
+            // Copied first: clearing the value below empties the list.
+            void run(Array.from(e.target.files ?? []));
             // So picking the same file again still fires a change.
             e.target.value = "";
           }}
@@ -120,9 +133,13 @@ export default function NewAnalysisActions() {
         createPortal(
           <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-paper/70 p-6 backdrop-blur-sm">
             <div className="w-full max-w-xl rounded-3xl border-2 border-dashed border-accent bg-white/85 px-8 py-16 text-center shadow-[0_40px_80px_-40px_rgba(20,19,15,0.45)]">
-              <p className="text-lg font-semibold text-ink">{busy ? BUSY : "Drop the PDF to analyse it"}</p>
+              <p className="text-lg font-semibold text-ink">
+                {busy ? "Drop to add them to the queue" : "Drop PDFs to analyse them"}
+              </p>
               <p className="mt-1 text-sm text-muted">
-                {busy ? "Drop the next one once it has finished." : `PDF · up to ${MAX_SIZE_MB}MB`}
+                {busy
+                  ? "Each runs once the decks before it have finished."
+                  : `One or several · PDF · up to ${MAX_SIZE_MB}MB each`}
               </p>
             </div>
           </div>,
@@ -130,4 +147,10 @@ export default function NewAnalysisActions() {
         )}
     </div>
   );
+}
+
+/** Why the files that aren't decks were left out, naming the file when there's one. */
+function skipped(files: File[]): string {
+  const what = files.length === 1 ? files[0].name : `${files.length} files`;
+  return `Skipped ${what}: only PDFs up to ${MAX_SIZE_MB}MB can be analysed.`;
 }
