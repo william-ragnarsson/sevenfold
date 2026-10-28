@@ -12,6 +12,7 @@ import type {
   LlmProvider,
   ResearchOutput,
   SystemPrompt,
+  ThinkingLevel,
   TokenUsage,
   WebSource,
 } from "./types";
@@ -46,6 +47,61 @@ function textOf(content: Anthropic.ContentBlock[]): string {
     .trim();
 }
 
+/**
+ * How each Claude model turns thinking off, for the "minimal" level. Haiku 5.5
+ * takes `disabled`; Sonnet 5.5 rejects that (400) and uses `between_tools`,
+ * which only it accepts. Opus 5.5 can't turn thinking off at all, so it isn't
+ * listed: effort "low" is its floor. Models not listed get no `thinking` param,
+ * which on the older ones (Haiku 4.5, Opus 4.8) already means no thinking.
+ */
+const THINKING_OFF: Record<string, { type: string }> = {
+  "claude-haiku-5-5": { type: "disabled" },
+  "claude-sonnet-5-5": { type: "between_tools" },
+};
+
+/** Claude's effort for each thinking level. Claude has no "minimal" effort. */
+const EFFORT: Record<ThinkingLevel, "low" | "medium" | "high"> = {
+  minimal: "low",
+  low: "low",
+  medium: "medium",
+  high: "high",
+};
+
+/**
+ * The thinking and effort params for a stage's thinking level. Unset means
+ * "minimal": effort low with thinking off where the model allows it, the
+ * cheapest setting each model takes. "low" and up leave adaptive thinking on
+ * and set its effort. Thinking bills as output and counts toward `max_tokens`.
+ */
+function thinkingParams(model: string, level: ThinkingLevel = "minimal") {
+  const off = level === "minimal" ? THINKING_OFF[model] : undefined;
+  return {
+    ...(off ? { thinking: off as Anthropic.ThinkingConfigParam } : {}),
+    ...(modelSupportsEffort(model) ? { output_config: { effort: EFFORT[level] } } : {}),
+  };
+}
+
+/**
+ * Throw on a safety refusal, which comes back as a 200 with no answer text.
+ * The stage then fails with a clear reason instead of parsing an empty reply.
+ */
+function assertAnswered(message: Anthropic.Message, model: string): void {
+  if (message.stop_reason !== "refusal") return;
+  const category = (message as { stop_details?: { category?: string } }).stop_details?.category;
+  throw new Error(`${model} declined the request${category ? ` (${category})` : ""}.`);
+}
+
+/**
+ * The web search tool version for a model. The 20260209 version filters
+ * results with code and is documented for Opus and Sonnet (4.6 and later);
+ * Haiku gets the basic 20250305 version.
+ */
+function webSearchType(model: string) {
+  return model.startsWith("claude-haiku")
+    ? ("web_search_20250305" as const)
+    : ("web_search_20260209" as const);
+}
+
 /** Normalize an Anthropic `Usage` object to the provider-agnostic shape. */
 function usageOf(usage: Anthropic.Usage, model: string): TokenUsage {
   return {
@@ -62,19 +118,10 @@ function usageOf(usage: Anthropic.Usage, model: string): TokenUsage {
 /**
  * Anthropic Claude adapter — translates the generic capabilities to the SDK.
  *
- * **Dormant by default, deliberately kept.** The pipeline standardised on Gemini
- * (see the stage defaults in `lib/config.ts`), so nothing here runs unless a stage
- * is pointed at a `claude-*` model id. It is not dead code, for two reasons:
- *
- * 1. It's the fallback when Google has a bad day. Setting `OCR_MODEL` or
- *    `RESEARCH_MODEL` to a Claude id is a one-line recovery from a Gemini outage,
- *    and needs no deploy.
- * 2. It's what keeps `LlmProvider` genuinely provider-neutral. An interface with a
- *    single implementation drifts to match it. `SystemPrompt = string | SystemBlock[]`
- *    (`lib/llm/types.ts`) exists *only* because Claude needs `cache_control` markers
- *    — Gemini joins the blocks and ignores them. Delete this file and that type
- *    collapses to `string`, at which point adding any provider with prompt caching
- *    becomes an interface rewrite rather than a new file.
+ * Every stage defaults to a Claude model (see the stage defaults in
+ * `lib/config.ts`). Gemini (`lib/llm/gemini.ts`) stays wired up: pointing a
+ * stage at a `gemini-*` id routes there with no other change, which is also
+ * the recovery from a Claude outage.
  *
  * `getAnthropicApiKey()` is read at call time, so no Anthropic key is required
  * while nothing routes here.
@@ -82,13 +129,14 @@ function usageOf(usage: Anthropic.Usage, model: string): TokenUsage {
 export const claudeProvider: LlmProvider = {
   name: "claude",
 
-  async transcribePdf(pdf, model, instruction, { onUsage, onText, signal } = {}) {
+  async transcribePdf(pdf, model, instruction, { onUsage, onText, thinking, signal } = {}) {
     // Stream to avoid HTTP timeouts on long transcriptions; the deltas also feed
     // the live deck scan.
     const stream = client().messages.stream(
       {
         model,
         max_tokens: getOcrMaxTokens(),
+        ...thinkingParams(model, thinking),
         messages: [
           {
             role: "user",
@@ -111,10 +159,11 @@ export const claudeProvider: LlmProvider = {
     if (onText) stream.on("text", (delta: string) => onText(delta));
     const message = await stream.finalMessage();
     onUsage?.(usageOf(message.usage, model));
+    assertAnswered(message, model);
     return textOf(message.content);
   },
 
-  async researchWeb({ model, system, user, onSearch, onSource, onText, onUsage, signal }): Promise<ResearchOutput> {
+  async researchWeb({ model, system, user, onSearch, onSource, onText, onUsage, thinking, signal }): Promise<ResearchOutput> {
     const c = client();
     const messages: Anthropic.MessageParam[] = [{ role: "user", content: user }];
     const maxContinuations = getResearchMaxContinuations();
@@ -124,20 +173,17 @@ export const claudeProvider: LlmProvider = {
       system: toSystem(system),
       tools: [
         {
-          type: "web_search_20260209" as const,
+          type: webSearchType(model),
           name: "web_search" as const,
           max_uses: getResearchMaxSearches(),
-          // Restrict to direct calls: this tool's default caller set includes
-          // programmatic (code-execution) calling, which only newer models
-          // support — without this, a model like Haiku 4.5 400s ("does not
-          // support programmatic tool calling"). Direct is all this pipeline
-          // ever needs (no code execution tool is declared here).
+          // Restrict to direct calls: the tool's default caller set includes
+          // programmatic (code-execution) calling, which not every model
+          // supports ("does not support programmatic tool calling"). Direct is
+          // all this pipeline ever needs (no code execution tool is declared).
           allowed_callers: ["direct" as const],
         },
       ],
-      // Not every model accepts this param (e.g. Haiku 4.5 400s on it), so only
-      // send it when RESEARCH_MODEL is one that supports it.
-      ...(modelSupportsEffort(model) ? { output_config: { effort: "low" as const } } : {}),
+      ...thinkingParams(model, thinking),
     };
 
     const sources: WebSource[] = [];
@@ -181,16 +227,18 @@ export const claudeProvider: LlmProvider = {
       onUsage?.(usageOf(response.usage, model));
       continuations += 1;
     }
+    assertAnswered(response, model);
 
     return { findings: textOf(response.content), sources };
   },
 
-  async generateStream({ model, system, user, onText, onUsage, signal }) {
+  async generateStream({ model, system, user, onText, onUsage, thinking, signal }) {
     // No tools — stream plain text (the pipeline parses NDJSON field lines).
     const stream = client().messages.stream(
       {
         model,
         max_tokens: getWriteMaxTokens(),
+        ...thinkingParams(model, thinking),
         system: toSystem(system),
         messages: [{ role: "user", content: user }],
       },
@@ -199,6 +247,7 @@ export const claudeProvider: LlmProvider = {
     if (onText) stream.on("text", (delta: string) => onText(delta));
     const message = await stream.finalMessage();
     onUsage?.(usageOf(message.usage, model));
+    assertAnswered(message, model);
     return textOf(message.content);
   },
 };
