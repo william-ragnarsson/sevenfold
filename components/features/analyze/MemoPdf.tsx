@@ -3,6 +3,7 @@ import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { FieldSource } from "@/lib/core/types";
 import { DOC_SECTIONS, readField, type FieldDescriptor } from "@/lib/diligence/form-schema";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import { citedSlides } from "@/lib/diligence/evidence";
 import { founderSource } from "@/features/founders/form";
 
 /**
@@ -121,7 +122,7 @@ function TextRow({ descriptor, state }: { descriptor: FieldDescriptor; state: An
       <Text style={s.label}>{pdfSafe(descriptor.label)}</Text>
       <View style={s.value}>
         {value ? <Text>{pdfSafe(value)}</Text> : <Text style={s.empty}>-</Text>}
-        {value && <SourceTag source={field?.source} slides={state.deck?.evidence[descriptor.key]} />}
+        {value && <SourceTag source={field?.source} slides={citedSlides(state)[descriptor.key]} />}
       </View>
     </View>
   );
@@ -129,7 +130,7 @@ function TextRow({ descriptor, state }: { descriptor: FieldDescriptor; state: An
 
 function FounderRows({ state }: { state: AnalysisState }) {
   const members = state.form.founders.members;
-  const slides = state.deck?.evidence.founders;
+  const slides = citedSlides(state).founders;
   if (members.length === 0) {
     return (
       <PdfRow label="Founders">

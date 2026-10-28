@@ -70,7 +70,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `proxy.ts` | Next 16's replacement for middleware (exports `proxy`, always on Node). Refreshes the Supabase session cookies on every request except static assets, `/mcp` and `/.well-known/*`. Sends signed-out and anonymous visitors from `/dashboard` and everything under it to `/sign-in?next=<path>`. Does nothing when Supabase isn't configured |
 | `features/<product>/` | One folder per product: its types, form slice, live state, prompts, parser, pipeline stage and UI. Rules in `features/README.md` |
 | `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
-| `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), the browser's NDJSON reader (`stream.ts`, `readProgressStream`), and a person's memo edits (`edits.ts`: `MemoEdit`, `applyMemoEdit`, `EDITABLE_KEYS`, `PICKABLE_SOURCES`), applied the same way in the browser and by the PATCH route |
+| `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), the browser's NDJSON reader (`stream.ts`, `readProgressStream`), a person's memo edits (`edits.ts`: `MemoEdit`, `applyMemoEdit`, `EDITABLE_KEYS`, `PICKABLE_SOURCES`), applied the same way in the browser and by the PATCH route, and the slides each deck value was read from (`evidence.ts`, `citedSlides`), which every view that lists slides reads |
 | `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs and `getRunClaim`), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
 | `lib/llm/` | Provider adapters (`gemini.ts`, `claude.ts`) and `pricing.ts` |
 | `lib/config.ts` | Almost every env var, each read through a getter: model per stage, thinking per stage, token and search budgets, Supabase keys. Exceptions: `NEXT_PUBLIC_SITE_URL` is read directly in `app/layout.tsx` and `lib/mcp/server.ts`, and `proxy.ts` reads the `NEXT_PUBLIC_SUPABASE_*` vars itself |
@@ -192,7 +192,7 @@ MCP runs (`lib/mcp/server.ts`: `analyze_deck`, `get_analysis`,
 - The markdown leaves out the deck's slides and research's notes and searches
   (research shows only as its sources, at most 25, `MAX_SOURCES`), and drops
   feedback items' slide citations. Memo values and founders carry their
-  source tag, and a deck one its cited slides.
+  source tag, and a deck one the slides it was read from (`citedSlides`).
 
 ### Editing a memo
 
@@ -322,8 +322,9 @@ as soon as the stages it `needs` are done.
 - Each founder has an optional `source`:
   - `applyFoundersField` stamps the `founders` line's source on every member.
   - Older reports have none. `founderSource` (`features/founders/form.ts`)
-    then reads it as `deck` when the deck cited slides for `founders`, and as
-    no source otherwise. The deck page makes the same assumption.
+    then reads it as `deck` when a citation for `founders` stands
+    (`citedSlides`), and as no source otherwise. `citedSlides` and the deck
+    page count a founder with no source as from the deck.
 - Two functions rebuild founders, and a key added to `Founder` is dropped
   unless it's added to both:
   - `normalizeFounders` (model output) keeps `role`, `name`, `commitment` and
@@ -332,11 +333,32 @@ as soon as the stages it `needs` are done.
 - A memo edit rewrites `state.form` in the saved row ([Editing a
   memo](#editing-a-memo)). It emits no event and never touches the top-level
   `verdict`, `deckFeedback` or `landscape` copies.
-- Slide evidence (`state.deck.evidence`) is kept when a cell is edited.
-  - The memo shows a cell's slides only while its source is `deck`, so
-    setting an edited cell back to deck brings them back.
-  - The deck page leaves `personal` values and founders off its slides
-    (`findingValue`).
+- Slide evidence (`state.deck.evidence`, field key → pages) is the pages the
+  model cited, as `foldDeck` keeps them:
+  - Only a `deck` value adds pages, and a field's first citation stands.
+    `complete` can cite a field `extract` left uncited, but can't replace
+    `extract`'s pages. Older reports may hold `complete`'s pages instead.
+  - A `web` value replaces a deck cell (same rank), so it drops the field's
+    pages. An `inferred` or `unknown` line leaves them, as `applyTextField`
+    leaves the cell.
+- Nothing shows `deck.evidence` directly. Every view that lists slides (the
+  memo, the founders, the deck page, the memo's PDF and the MCP markdown)
+  reads `citedSlides` (`lib/diligence/evidence.ts`):
+  - It keeps a field only while its value is from the deck: a text cell
+    whose source is `deck`, the founders who are (or have no source), and
+    funding while it's set. Never a rating.
+  - It checks each page with `checkCitations`
+    (`features/deck-reader/citations.ts`). A page stands when the value
+    shares a distinctive word or number with the page's stored text, and
+    falls when the page had no text, since the model only read text.
+  - It's loose on purpose: whatever it can't judge stands. That's a value
+    with no distinctive words, or none anywhere in the deck (a paraphrase); a
+    clipped page or deck; a deck read as one block; and a deck where most
+    citations miss, which it takes for a memo in another language.
+  - It's worked out when shown, so saved reports get the same check.
+- Slide evidence is kept when a cell is edited. A cell shows its slides only
+  while its source is `deck`, so setting an edited cell back to deck brings
+  them back, if they hold up against the edited text.
 - An unscored scorecard has every rating at 0 and funding `null`. With
   `fundingInUsd` set (top-level state), funding is whole US dollars, `null`
   means unknown and `0` means confirmed nothing raised. Older reports lack
@@ -517,7 +539,8 @@ command. Don't edit `.claude/launch.json` without asking the owner.
 - The memo's PDF can be checked without a browser or a run: render `MemoPdf`
   in Node with `renderToFile` from `@react-pdf/renderer`, from a hand-written
   `AnalysisState` (an `emptyForm()` with values filled in, plus
-  `deck.evidence`). `MemoPdf.tsx` is TSX with `@/` imports, so load it
+  `deck.evidence` and the cited pages' text in `deck.slides`, since
+  `citedSlides` drops a page with no text). `MemoPdf.tsx` is TSX with `@/` imports, so load it
   through a loader such as `jiti` with the `@` alias set. Keep the script out
   of the repo.
 
@@ -717,9 +740,9 @@ What exists, with known gaps. Slugs are the product page paths.
 
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
-| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it (deck-sourced fields only). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`; a live run moves it along. A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. Not in the MCP markdown. No export. No fallback OCR model |
-| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from. Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF. The page ends with research's Sources | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
-| **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty. Each founder shows its source and, from the deck, the slides cited. Editable in the memo | No research of its own. The Founders page is read-only. One source per founder, not per detail |
+| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, and under it its text beside the memo fields taken from it: deck values only, on the pages that hold up against their text (`citedSlides`). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. The full report keeps the rail in the card, as a column on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`. A live run moves it along as pages are read, then to each field's first slide as it's cited, about eight seconds for them all (`findDwell`). A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. The citation check is a word match: it can drop the right page for a value the model reworded, and keep a wrong one that shares one word with it. Not in the MCP markdown. No export. No fallback OCR model |
+| **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from (the citations that hold up against the slides' text, `citedSlides`). Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF. The page ends with research's Sources | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
+| **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty. Each founder shows its source and, from the deck, the slides cited. Editable in the memo | No research of its own. The Founders page is read-only. One source per founder, not per detail. In an older report, founders with no source lose their deck badge when no `founders` citation holds up |
 | **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
 | **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
