@@ -11,6 +11,7 @@ import { deckTotal, isUnmapped } from "@/features/deck-reader/ui/selectors";
 import LandscapePanel from "@/features/landscape/ui/LandscapePanel";
 import type { SlideHref } from "@/components/report/SlideChips";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import { citedSlides } from "@/lib/diligence/evidence";
 import type { MemoEdit } from "@/lib/diligence/edits";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
 import MemoToolbar from "./MemoToolbar";
@@ -73,7 +74,7 @@ function memoRenderers(state: AnalysisState, env: ReportEnv): Partial<Record<"fo
       <FoundersRows
         form={form}
         active={active}
-        evidence={state.deck?.evidence.founders}
+        evidence={citedSlides(state).founders}
         slideHref={slideHrefFor(state, env)}
         onChange={edit && ((members) => edit({ kind: "founders", members }))}
       />
@@ -98,6 +99,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
         key={s.startedAt}
         deck={s.deck}
         form={s.form}
+        evidence={citedSlides(s)}
         active={active}
         pdf={env.pdf}
         openSlide={env.slide}
@@ -112,7 +114,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
     pageOnly: true,
     available: () => true,
     render: (s, active, env) => (
-      <FoundersPanel form={s.form} active={active} evidence={s.deck?.evidence} slideHref={slideHrefFor(s, env)} />
+      <FoundersPanel form={s.form} active={active} evidence={citedSlides(s)} slideHref={slideHrefFor(s, env)} />
     ),
   },
   {
@@ -155,7 +157,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
           form={s.form}
           active={active}
           renderers={memoRenderers(s, env)}
-          evidence={s.deck?.evidence}
+          evidence={citedSlides(s)}
           slideHref={slideHrefFor(s, env)}
           onEditField={
             edit &&

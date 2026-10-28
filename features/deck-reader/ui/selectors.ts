@@ -49,13 +49,16 @@ export function isUnmapped(deck: DeckState): boolean {
 }
 
 /**
- * What a cited field holds now. A value a person typed in themselves isn't
- * shown on the slide it replaced; neither is a founder they added or edited.
+ * What a cited field holds now, as read off the deck. A value from the web,
+ * the model's own inference or a person's edit isn't shown on the slide it
+ * replaced; neither are the founders who didn't come from the deck.
  */
 function findingValue(form: DueDiligenceForm, key: string, kind: string): { value: string; source: FieldSource } | null {
   if (kind === "founders") {
+    // A founder with no source is from a report older than founder sources,
+    // where a cited list was read off the deck.
     const names = form.founders.members
-      .filter((m) => m.source !== "personal")
+      .filter((m) => (m.source ?? "deck") === "deck")
       .map((m) => m.name)
       .filter(Boolean);
     return names.length ? { value: names.join(", "), source: "deck" } : null;
@@ -64,22 +67,20 @@ function findingValue(form: DueDiligenceForm, key: string, kind: string): { valu
     const n = form.scorecard.funding;
     return n === null ? null : { value: `$${n.toLocaleString("en-US")}`, source: "deck" };
   }
-  if (kind === "rating") {
-    const n = (form.scorecard as unknown as Record<string, number>)[key.split(".")[1]] ?? 0;
-    return n > 0 ? { value: `${n} / 5`, source: "inferred" } : null;
-  }
   const field = readField(form, key);
-  return field?.value && field.source !== "personal" ? { value: field.value, source: field.source } : null;
+  return field?.value && field.source === "deck" ? { value: field.value, source: field.source } : null;
 }
 
 /**
- * Page number → the fields cited from it, in form order. Fields with no value
- * (yet, or any more) are left out, so a tile never shows a chip for nothing.
+ * Page number → the fields cited from it, in form order. `evidence` is the
+ * deck's citations once checked (`citedSlides`, passed in by the report).
+ * Fields with no deck value (yet, or any more) are left out, so a tile never
+ * shows a chip for nothing.
  */
-export function findingsBySlide(deck: DeckState, form: DueDiligenceForm): Map<number, SlideFinding[]> {
+export function findingsBySlide(evidence: Record<string, number[]>, form: DueDiligenceForm): Map<number, SlideFinding[]> {
   const bySlide = new Map<number, SlideFinding[]>();
   for (const d of FIELD_DESCRIPTORS) {
-    const pages = deck.evidence[d.key];
+    const pages = evidence[d.key];
     if (!pages?.length) continue;
     const found = findingValue(form, d.key, d.kind);
     if (!found) continue;
@@ -99,12 +100,16 @@ export interface CitationStop {
 }
 
 /**
- * Every cited field, once, at the first slide it cites, in the order the fields
- * were first cited (`foldDeck` adds new keys to `evidence` at the end). Lets a
- * view go to each place the model found something, as it found it.
+ * Every field a slide lists, once, at the first slide that lists it, in the
+ * order the fields were first cited (`foldDeck` adds new keys to `evidence`
+ * at the end). Lets a view go to each place the model found something, as it
+ * found it.
  */
-export function citationTour(deck: DeckState): CitationStop[] {
-  return Object.entries(deck.evidence).flatMap(([key, pages]) => (pages.length ? [{ key, slide: pages[0] }] : []));
+export function citationTour(evidence: Record<string, number[]>, findings: Map<number, SlideFinding[]>): CitationStop[] {
+  return Object.entries(evidence).flatMap(([key, pages]) => {
+    const slide = pages.find((page) => findings.get(page)?.some((f) => f.key === key));
+    return slide === undefined ? [] : [{ key, slide }];
+  });
 }
 
 export interface SlideViewOptions {
@@ -167,7 +172,7 @@ export function deckProgressLabel(deck: DeckState | undefined, views: SlideView[
   if (isUnmapped(deck)) return "Read as one block, so slides couldn't be told apart";
 
   const withText = views.filter((v) => v.status === "read").length;
-  const cited = Object.keys(deck.evidence).length;
+  const cited = new Set(views.flatMap((v) => v.findings.map((f) => f.key))).size;
   const fields = cited === 1 ? "1 field cited" : `${cited} fields cited`;
   return `${withText} of ${total} slides had text · ${fields}`;
 }

@@ -11,6 +11,7 @@
 import { domainOf } from "@/lib/sources";
 import { DD_SECTIONS, SCORECARD_METRIC_KEYS } from "@/lib/diligence/form-schema";
 import type { AnalysisState } from "@/lib/diligence/stream-state";
+import { citedSlides } from "@/lib/diligence/evidence";
 import type {
   CompetitiveLandscape,
   DeckFeedbackItem,
@@ -46,7 +47,7 @@ const SCORE_LABELS: Record<(typeof SCORECARD_METRIC_KEYS)[number], string> = {
 export function renderReport(state: AnalysisState, { url, name }: { url: string; name: string }): string {
   const form = state.form;
   const company = form.company.name.value.trim() || name;
-  const evidence = state.deck?.evidence ?? {};
+  const evidence = citedSlides(state);
   const verdict = state.verdict ?? form.verdict;
   const out: string[] = [];
 

@@ -53,10 +53,6 @@ function upsertSlide(slides: SlideText[], slide: SlideText): SlideText[] {
   return [...rest, slide].sort((a, b) => a.index - b.index);
 }
 
-function sameNumbers(a: number[] | undefined, b: number[]): boolean {
-  return !!a && a.length === b.length && a.every((n, i) => n === b[i]);
-}
-
 /**
  * Apply one event to the deck slice. Pure, and returns the same reference when
  * the event changes nothing, so the caller can skip a state copy.
@@ -90,20 +86,24 @@ export function foldDeck(deck: DeckState | undefined, event: ProgressEvent): Dec
     }
 
     case "field": {
-      const max = deck.pageCount ?? MAX_SLIDES;
-      const cited = (event.slides ?? []).filter((n) => n >= 1 && n <= max);
-      if (cited.length > 0) {
-        if (sameNumbers(deck.evidence[event.key], cited)) return deck;
-        return { ...deck, evidence: { ...deck.evidence, [event.key]: cited } };
-      }
-      // A web or inferred value replaced the deck's, so its pages no longer
-      // back it up. A deck value that just didn't cite again keeps its pages.
-      if (event.source !== "deck" && event.key in deck.evidence) {
+      // Only a deck value is backed by pages. A web one ranks with the deck's
+      // and replaces it, so the deck's pages go with it; a lower source can't
+      // replace a filled deck cell (`applyTextField`), so its pages stay.
+      // Either way it cites none of its own.
+      if (event.source !== "deck") {
+        if (event.source !== "web" || !(event.key in deck.evidence)) return deck;
         const evidence = { ...deck.evidence };
         delete evidence[event.key];
         return { ...deck, evidence };
       }
-      return deck;
+      // The first citation stands. `complete` re-reads the deck beside the
+      // research, and its second guess at the pages shouldn't replace
+      // extract's; it can still cite a field extract left uncited.
+      if (event.key in deck.evidence) return deck;
+      const max = deck.pageCount ?? MAX_SLIDES;
+      const cited = (event.slides ?? []).filter((n) => n >= 1 && n <= max);
+      if (cited.length === 0) return deck;
+      return { ...deck, evidence: { ...deck.evidence, [event.key]: cited } };
     }
 
     default:

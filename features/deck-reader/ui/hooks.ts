@@ -64,6 +64,14 @@ export function sweepDwell(total: number): number {
 }
 
 /**
+ * How long the stage stays on each field it found, for this many finds, in
+ * ms: about eight seconds for them all, within limits.
+ */
+export function findDwell(total: number): number {
+  return Math.min(1200, Math.max(300, 8000 / Math.max(total, 1)));
+}
+
+/**
  * A count that walks up to `target` one step per `dwell` ms, so things that
  * arrive in a burst (pages from the text layer, a batch of fields) still play
  * out one at a time. It is never ahead of `target`, and a long backlog moves
@@ -73,16 +81,19 @@ export function sweepDwell(total: number): number {
 export function usePacedReveal(target: number, { dwell, animate }: { dwell: number; animate: boolean }): number {
   const [shown, setShown] = useState(0);
   const behind = animate && shown < target;
-  // Reads the latest target when the step lands. Keeping `target` out of the
-  // timer's deps matters: items arriving faster than `dwell` would otherwise
-  // restart the timer every time, and nothing would move until they stopped.
+  // Reads the latest target when the step lands, and the latest dwell when
+  // it's set. Keeping both out of the timer's deps matters: items arriving
+  // faster than `dwell` (and a dwell that shrinks as they arrive) would
+  // otherwise restart the timer every time, and nothing would move until
+  // they stopped.
   const step = useEffectEvent(() => setShown((s) => s + Math.max(1, Math.floor((target - s) / 20))));
+  const wait = useEffectEvent(() => dwell);
 
   useEffect(() => {
     if (!behind) return;
-    const timer = setTimeout(step, dwell);
+    const timer = setTimeout(step, wait());
     return () => clearTimeout(timer);
-  }, [behind, shown, dwell]);
+  }, [behind, shown]);
 
   return animate ? Math.min(shown, target) : target;
 }

@@ -16,13 +16,10 @@ import {
 import type { DeckState } from "@/features/deck-reader/types";
 import type { DueDiligenceForm } from "@/lib/diligence/types";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
-import { sweepDwell, useDeckSlide, useDeckThumbnails, useNearViewport, usePacedReveal, useReducedMotion } from "./hooks";
+import { findDwell, sweepDwell, useDeckSlide, useDeckThumbnails, useNearViewport, usePacedReveal, useReducedMotion } from "./hooks";
 import SlideStage from "./SlideStage";
 import SlideRail, { type RailLayout } from "./SlideRail";
 import SlideDetail from "./SlideDetail";
-
-/** How long the stage stays on each new find before going to the next, in ms. */
-const FIND_DWELL = 1200;
 
 const NO_FINDINGS = new Map<number, SlideFinding[]>();
 
@@ -49,14 +46,16 @@ function UnplacedText({ text, label }: { text: string; label: string }) {
  * reader goes through the deck, then to each slide a field is found on, as
  * it's found. Afterwards it stays as a per-slide record of what was read off
  * each page and which fields came from it. Everything shown is derived from
- * `AnalysisState.deck` and the form by the selectors in `features/deck-reader`;
- * the slide images are drawn in the browser from `pdf` when there is one.
+ * `AnalysisState.deck`, the form and the checked citations (`evidence`) by
+ * the selectors in `features/deck-reader`; the slide images are drawn in the
+ * browser from `pdf` when there is one.
  *
  * Remount it (via `key`) for a new run, so the stage starts from slide 1.
  */
 export default function DeckSection({
   deck,
   form,
+  evidence,
   active,
   pdf,
   openSlide = null,
@@ -64,6 +63,8 @@ export default function DeckSection({
 }: {
   deck: DeckState | undefined;
   form: DueDiligenceForm;
+  /** Field key → the slides its deck value was read from, once checked against them. */
+  evidence: Record<string, number[]>;
   active: boolean;
   pdf: PdfSource | null;
   /** A slide to open, as if picked: a link's `?slide=4`, e.g. from a feedback item. */
@@ -82,15 +83,15 @@ export default function DeckSection({
   const cursor = usePacedReveal(target, { dwell: sweepDwell(total), animate });
   const scanning = active && !!deck && (!deck.read || cursor < target);
 
-  const findings = useMemo(() => (deck ? findingsBySlide(deck, form) : NO_FINDINGS), [deck, form]);
+  const findings = useMemo(() => (deck ? findingsBySlide(evidence, form) : NO_FINDINGS), [deck, evidence, form]);
   const views = useMemo(
     () => (deck ? buildSlideViews(deck, findings, { cursor, scanning }) : []),
     [deck, findings, cursor, scanning],
   );
 
   // Once the sweep is done, go to each field's slide in the order they're found.
-  const tour = useMemo(() => (deck ? citationTour(deck) : []), [deck]);
-  const toured = usePacedReveal(scanning ? 0 : tour.length, { dwell: FIND_DWELL, animate });
+  const tour = useMemo(() => citationTour(evidence, findings), [evidence, findings]);
+  const toured = usePacedReveal(scanning ? 0 : tour.length, { dwell: findDwell(tour.length), animate });
   const stop = !scanning && toured > 0 ? tour[toured - 1] : undefined;
 
   // Where the run is: the page being read, then the latest find.
