@@ -24,8 +24,9 @@ Stack:
 
 - Next.js 16 (App Router), React 19, Tailwind 4 and TypeScript (strict).
 - Supabase for accounts, saved analyses and PDF storage.
-- Gemini for every model call (`@google/genai`). The Claude adapter is kept
-  only as an outage fallback.
+- Claude for every model call by default (`@anthropic-ai/sdk`). The Gemini
+  adapter (`@google/genai`) stays wired up: a `gemini-*` id on any stage
+  routes there, which is also the recovery from a Claude outage.
 - An ONNX model for the verdict (`onnxruntime-node`).
 - `@react-pdf/renderer` for the memo's PDF download, made in the browser.
 - An MCP server, so Claude can run analyses.
@@ -72,7 +73,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
 | `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), the browser's NDJSON reader (`stream.ts`, `readProgressStream`), a person's memo edits (`edits.ts`: `MemoEdit`, `applyMemoEdit`, `EDITABLE_KEYS`, `PICKABLE_SOURCES`), applied the same way in the browser and by the PATCH route, and the slides each deck value was read from (`evidence.ts`, `citedSlides`), which every view that lists slides reads |
 | `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs and `getRunClaim`), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
-| `lib/llm/` | Provider adapters (`gemini.ts`, `claude.ts`) and `pricing.ts` |
+| `lib/llm/` | Provider adapters (`claude.ts`, `gemini.ts`) and `pricing.ts`. `claude.ts` maps each stage's thinking level to Claude's effort and thinking params per model (`thinkingParams`), picks the web search tool version per model, and throws on a refusal |
 | `lib/config.ts` | Almost every env var, each read through a getter: model per stage, thinking per stage, token and search budgets, Supabase keys. Exceptions: `NEXT_PUBLIC_SITE_URL` is read directly in `app/layout.tsx` and `lib/mcp/server.ts`, and `proxy.ts` reads the `NEXT_PUBLIC_SUPABASE_*` vars itself |
 | `lib/playbook/load.ts` | `loadPlaybook()`: reads `docs/playbook.md` from disk at run time, once per process |
 | `lib/sources.ts` | `domainOf` and `faviconOf`. The only `lib` module besides `lib/core` that `components/report` and `components/ui` may import |
@@ -264,8 +265,15 @@ as soon as the stages it `needs` are done.
 | `feedback` | feedback | scorecard | yes | no | `feedback` | `FEEDBACK_MODEL`, `FEEDBACK_THINKING` |
 | `verdict` | verdict | feedback, landscape | yes | no | — (local ONNX, free) | — |
 
-- Every model defaults to `gemini-3.5-flash-lite`.
-- An unset `*_THINKING` means the model's lowest level.
+- Every model defaults to `claude-haiku-5-5`, except scorecard and feedback,
+  which default to `claude-sonnet-5-5`. `.env.example` lists priced presets,
+  from all-Haiku to all-Opus.
+- An unset `*_THINKING` means the model's lowest level. On Claude that's
+  effort low, with thinking off on Haiku 5.5 (`disabled`) and Sonnet 5.5
+  (`between_tools`); Opus 5.5 can't turn it off. `low` and up turn adaptive
+  thinking on at that effort. Thinking counts toward the stage's output cap.
+- On Claude, `jsonSchema` isn't sent: scorecard and the landscape map rely on
+  their prompts and the tolerant JSON parse in `lib/core/parse.ts`.
 - The critical path is five model calls in a row (six with OCR): extract,
   research, complete, scorecard, feedback.
 - Verdict reads `form.scorecard` but doesn't list `scorecard` in its `needs`.
@@ -423,8 +431,9 @@ Old analyses are their saved `state` jsonb, replayed by today's code. So:
 - **Keep state JSON-serializable** (no `Date`, `Map` or functions) and **bound
   anything that grows**.
 - **Keep the shared prompt prefix byte-identical.** Every stage sends the same
-  `withDeckContext(playbook, deckText, …)` front so Gemini's cache hits. Put
-  per-stage text in the instructions part.
+  `withDeckContext(playbook, deckText, …)` front so the prompt cache hits
+  (Claude's `cache_control` prefix, Gemini's implicit cache). Put per-stage
+  text in the instructions part.
 
 ### Cost: the owner pays for every model call
 
@@ -433,7 +442,14 @@ Old analyses are their saved `state` jsonb, replayed by today's code. So:
   calls a model.
   - Say first what it will run and roughly what it costs.
   - A run makes about 7 model calls, plus OCR for scanned PDFs.
-  - On the default models that's an unmeasured few cents each.
+  - On the default models (Haiku 5.5, with Sonnet 5.5 on scorecard and
+    feedback) that's an estimated 12¢ a run for a typical deck, unmeasured.
+    About 6¢ of it is web search: Claude bills
+    $10 per 1,000 searches with no free allowance, and research and
+    landscape each run up to `RESEARCH_MAX_SEARCHES` (3). `.env.example`
+    prices the other presets.
+  - Haiku 5.5 bills a whole call at 5× once its prompt passes 100K tokens
+    (`longPrompt` in `lib/llm/pricing.ts`); a very long deck can cross it.
   - Gemini web searches are free up to an allowance, then billed: 3.x models
     $14 per 1,000 queries after 5,000 a month; 2.5 models $35 per 1,000
     grounded prompts after 1,500 a day (`lib/llm/pricing.ts`).
@@ -444,14 +460,17 @@ Old analyses are their saved `state` jsonb, replayed by today's code. So:
   - Usage is never saved: `persist.ts` drops `usage` events.
 - **Ask before** raising a default model, thinking level, token or search
   budget; adding a paid service or API; or upgrading any plan (Vercel,
-  Supabase, Google).
+  Supabase, Google, Anthropic).
 - A new model id needs:
   - an entry in `KNOWN_MODELS` (`lib/config.ts`), since `envModel` rejects
     anything else;
   - a row in `lib/llm/pricing.ts`, or it's tracked at $0;
   - a line in `.env.example`'s list of models;
   - for a Gemini id, an entry in the `THINKING` table (`lib/llm/gemini.ts`),
-    so its lowest thinking level is known rather than guessed.
+    so its lowest thinking level is known rather than guessed;
+  - for a Claude id, a `THINKING_OFF` entry in `lib/llm/claude.ts` if the
+    model can turn thinking off, and an `EFFORT_UNSUPPORTED` entry
+    (`lib/config.ts`) if it rejects `effort`.
 - A stage that searches the web takes its budget from config and passes it to
   its prompt builder, never a number written into the prompt. Landscape does
   this with `getResearchMaxSearches()`. Research doesn't: its prompt says
@@ -652,7 +671,7 @@ but not all.
 6. **`lib/analyses/run.ts` `logEvent`:** add an `else if` for each new event
    type, or `tsc` fails.
 7. **`lib/config.ts` and `.env.example`:**
-   - Add `getXModel = () => envModel("X_MODEL", "gemini-3.5-flash-lite")` and
+   - Add `getXModel = () => envModel("X_MODEL", "claude-haiku-5-5")` and
      `getXThinking = () => envThinking("X_THINKING")`.
    - Add both names to `.env.example`, commented.
    - Report usage by passing `onUsage: reportUsage(emit, "x")` to the model
@@ -821,7 +840,6 @@ mode, and JS tests.
     Each stage's model picks its provider.
   - Its clone URL and `cd` name `william-popmie/vc-analyst`; the repository is
     `william-ragnarsson/sevenfold`.
-  - It says Claude writes the memo; Gemini does.
   - Its "Last updated" line.
 - `package.json` has no `engines` field, though Node 22 is required.
 - The doc comment in `lib/diligence/engine.ts` calls the scorecard "the seven

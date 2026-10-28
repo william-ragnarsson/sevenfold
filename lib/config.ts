@@ -106,6 +106,9 @@ export function getSupabaseServiceRoleKey(): string {
  * both lists before use. Keep in sync with `PER_MILLION` and `.env.example`.
  */
 export const KNOWN_MODELS = [
+  "claude-opus-5-5",
+  "claude-sonnet-5-5",
+  "claude-haiku-5-5",
   "claude-opus-4-8",
   "claude-sonnet-5",
   "claude-sonnet-4-6",
@@ -127,7 +130,7 @@ export function deriveProvider(model: string): Provider {
  * Claude models that reject `output_config.effort` outright (400 "This model
  * does not support the effort parameter"). A blocklist rather than an
  * allowlist so a newer/unrecognised model defaults to "supports it" — true
- * for every current-gen Claude model except Haiku.
+ * for every current-gen Claude model, Haiku 5.5 included.
  */
 const EFFORT_UNSUPPORTED = new Set(["claude-haiku-4-5"]);
 
@@ -156,28 +159,30 @@ function envModel(name: string, fallback: string): string {
 }
 
 /**
- * Per-stage model selection. Gemini 3.5 Flash-Lite on every stage: the cheapest
- * current model that does all of them well enough, at $0.30 / $2.50 per million
- * tokens in / out. Each stage can be pointed at any KNOWN_MODELS id from .env;
- * `gemini-3.6-flash` is the step up where a stage's judgment falls short, and a
- * `claude-*` id routes to Claude (`lib/llm/claude.ts`) with no other change.
+ * Per-stage model selection. Claude Haiku 5.5, the cheapest Claude model at
+ * $0.10 / $0.50 per million tokens in / out (5× that once a prompt passes 100K
+ * tokens), on every stage except scorecard and feedback, which judge the deck
+ * and get Claude Sonnet 5.5 ($2 / $10). Their prompts are small, so that adds
+ * about 4¢ a run. Each stage can be pointed at any KNOWN_MODELS id from .env;
+ * research gains the most from Sonnet next, and a `gemini-*` id routes to
+ * Gemini (`lib/llm/gemini.ts`) with no other change. The presets in
+ * `.env.example` price the combinations.
  */
-export const getOcrModel = (): string => envModel("OCR_MODEL", "gemini-3.5-flash-lite");
-export const getExtractModel = (): string => envModel("EXTRACT_MODEL", "gemini-3.5-flash-lite");
-export const getResearchModel = (): string => envModel("RESEARCH_MODEL", "gemini-3.5-flash-lite");
-export const getCompleteModel = (): string => envModel("COMPLETE_MODEL", "gemini-3.5-flash-lite");
-export const getScorecardModel = (): string => envModel("SCORECARD_MODEL", "gemini-3.5-flash-lite");
-export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "gemini-3.5-flash-lite");
+export const getOcrModel = (): string => envModel("OCR_MODEL", "claude-haiku-5-5");
+export const getExtractModel = (): string => envModel("EXTRACT_MODEL", "claude-haiku-5-5");
+export const getResearchModel = (): string => envModel("RESEARCH_MODEL", "claude-haiku-5-5");
+export const getCompleteModel = (): string => envModel("COMPLETE_MODEL", "claude-haiku-5-5");
+export const getScorecardModel = (): string => envModel("SCORECARD_MODEL", "claude-sonnet-5-5");
+export const getFeedbackModel = (): string => envModel("FEEDBACK_MODEL", "claude-sonnet-5-5");
 
 /**
- * The competitive landscape stage, on Gemini like the rest. Its search sources
- * come back as Google redirect links, so each competitor's logo and link rely on
- * the homepage the model writes into its notes. If those come out sparse,
- * `claude-haiku-4-5` is the alternative: Claude's web search returns real page
- * URLs. Any KNOWN_MODELS id works, since the stage only talks to the generic
- * provider interface.
+ * The competitive landscape stage, on Claude like the rest. Claude's web search
+ * returns real page URLs, which the competitors' logos and links use. On a
+ * Gemini model the sources come back as Google redirect links, so they rely on
+ * the homepage the model writes into its notes. Any KNOWN_MODELS id works,
+ * since the stage only talks to the generic provider interface.
  */
-export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "gemini-3.5-flash-lite");
+export const getLandscapeModel = (): string => envModel("LANDSCAPE_MODEL", "claude-haiku-5-5");
 
 // ───────────────────────────── Thinking ─────────────────────────────
 
@@ -186,9 +191,11 @@ export const THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const sat
 
 /**
  * Read a stage's thinking level from `name`. Unset means "minimal", which each
- * model raises to its own minimum (the table in lib/llm/gemini.ts), so the
- * default is always the cheapest setting the stage's model accepts. A set but
- * unrecognised value throws, like `envModel`.
+ * model raises to its own minimum (the THINKING table in lib/llm/gemini.ts; on
+ * Claude, effort low with thinking off where the model allows it, see
+ * `thinkingParams` in lib/llm/claude.ts), so the default is always the
+ * cheapest setting the stage's model accepts. A set but unrecognised value
+ * throws, like `envModel`.
  */
 function envThinking(name: string): ThinkingLevel {
   const raw = process.env[name]?.trim().toLowerCase();
@@ -205,8 +212,8 @@ function envThinking(name: string): ThinkingLevel {
 /**
  * Per-stage thinking level, one per *_MODEL above. Thinking is billed as output
  * and comes out of the stage's output-token cap, so raise a stage only when its
- * answers need more reasoning than its model gives at the minimum. Gemini only:
- * a stage on a Claude model ignores it.
+ * answers need more reasoning than its model gives at the minimum. On Claude,
+ * "low" and up turn adaptive thinking on at that effort.
  */
 export const getOcrThinking = (): ThinkingLevel => envThinking("OCR_THINKING");
 export const getExtractThinking = (): ThinkingLevel => envThinking("EXTRACT_THINKING");
@@ -239,11 +246,11 @@ function envInt(name: string, fallback: number, min: number, max: number): numbe
  * Web-research budget. `max searches` caps the web_search tool's uses; `max
  * continuations` caps how many times the server-side pause_turn loop resumes.
  *
- * NOTE: both gate Claude's `web_search` tool only, per call. Gemini's Google
- * Search grounding self-manages and never reads them, so with the default
- * Gemini models the search cap is only a request in the landscape prompt and
- * the continuation cap does nothing. Set `RESEARCH_MODEL=claude-haiku-4-5` if
- * you need a hard ceiling on the most expensive stage.
+ * NOTE: both gate Claude's `web_search` tool only, per call, where they're
+ * hard caps on every search stage (research and landscape alike). Gemini's
+ * Google Search grounding self-manages and never reads them, so a stage moved
+ * to a Gemini model has the search cap only as a request in the landscape
+ * prompt, and the continuation cap does nothing.
  */
 export const getResearchMaxSearches = (): number => envInt("RESEARCH_MAX_SEARCHES", 3, 0, 10);
 export const getResearchMaxContinuations = (): number =>

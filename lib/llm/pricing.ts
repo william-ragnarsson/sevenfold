@@ -11,6 +11,8 @@ interface Rate {
   cacheRead: number;
   cacheWrite: number;
   search: SearchRate;
+  /** A higher rate for the whole call once its prompt passes `above` tokens. */
+  longPrompt?: { above: number; rate: Omit<Rate, "search" | "longPrompt"> };
 }
 
 /**
@@ -40,6 +42,19 @@ const GEMINI_2_5_SEARCH: SearchRate = { usd: 0.035, per: "prompt" };
 const PER_MILLION: Record<string, Rate> = {
   // Claude rates are Anthropic's list prices (platform.claude.com/docs/en/about-claude/pricing);
   // cacheWrite is the 5-minute cache write, the only kind claude.ts makes.
+  "claude-opus-5-5": { input: 4.0, output: 20.0, cacheRead: 0.2, cacheWrite: 5.0, search: CLAUDE_SEARCH },
+  "claude-sonnet-5-5": { input: 2.0, output: 10.0, cacheRead: 0.2, cacheWrite: 2.5, search: CLAUDE_SEARCH },
+  // Haiku 5.5 bills the whole call at 5× once its prompt (input plus cache
+  // reads and writes) passes 100K tokens. Its tokenizer counts about 30% more
+  // tokens than Haiku 4.5's for the same text.
+  "claude-haiku-5-5": {
+    input: 0.1,
+    output: 0.5,
+    cacheRead: 0.01,
+    cacheWrite: 0.125,
+    search: CLAUDE_SEARCH,
+    longPrompt: { above: 100_000, rate: { input: 0.5, output: 2.5, cacheRead: 0.05, cacheWrite: 0.625 } },
+  },
   "claude-opus-4-8": { input: 5.0, output: 25.0, cacheRead: 0.5, cacheWrite: 6.25, search: CLAUDE_SEARCH },
   // Sonnet 5's $2 / $10 launch price became its standard price; the rise to
   // $3 / $15 announced for 2026-09-01 was called off.
@@ -67,8 +82,16 @@ function searchCostOf(searches: number, rate: SearchRate): number {
   return rate.per === "prompt" ? rate.usd : searches * rate.usd;
 }
 
-export function costOf(usage: TokenUsage): number {
+/** The rate one call pays, after any long-prompt tier. */
+function rateFor(usage: TokenUsage): Omit<Rate, "search" | "longPrompt"> | undefined {
   const rate = PER_MILLION[usage.model];
+  if (!rate?.longPrompt) return rate;
+  const prompt = usage.inputTokens + usage.cacheReadTokens + usage.cacheCreationTokens;
+  return prompt > rate.longPrompt.above ? rate.longPrompt.rate : rate;
+}
+
+export function costOf(usage: TokenUsage): number {
+  const rate = rateFor(usage);
   if (!rate) return 0;
 
   const tokenCost =
@@ -78,7 +101,7 @@ export function costOf(usage: TokenUsage): number {
       usage.cacheCreationTokens * rate.cacheWrite) /
     1_000_000;
 
-  return tokenCost + searchCostOf(usage.webSearches ?? 0, rate.search);
+  return tokenCost + searchCostOf(usage.webSearches ?? 0, PER_MILLION[usage.model].search);
 }
 
 /**
@@ -86,7 +109,7 @@ export function costOf(usage: TokenUsage): number {
  * input rate for them. Zero for unknown models or when nothing was cached.
  */
 export function cacheSavingsOf(usage: TokenUsage): number {
-  const rate = PER_MILLION[usage.model];
+  const rate = rateFor(usage);
   if (!rate) return 0;
 
   return (usage.cacheReadTokens * (rate.input - rate.cacheRead)) / 1_000_000;
