@@ -21,10 +21,10 @@ export type RailLayout = "auto" | "column" | "strip";
 const LAYOUT: Record<RailLayout, { list: string; tile: string }> = {
   auto: {
     list: "flex gap-3 overflow-x-auto p-1 pb-2 @3xl:absolute @3xl:inset-0 @3xl:flex-col @3xl:overflow-x-hidden @3xl:overflow-y-auto @3xl:pb-1",
-    tile: "w-32 shrink-0 @3xl:w-auto",
+    tile: "w-28 shrink-0 @3xl:w-auto",
   },
   column: { list: "absolute inset-0 flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-1", tile: "" },
-  strip: { list: "flex gap-3 overflow-x-auto p-1 pb-2", tile: "w-32 shrink-0" },
+  strip: { list: "flex gap-3 overflow-x-auto p-1 pb-2", tile: "w-28 shrink-0" },
 };
 
 /** Scroll `list` (and nothing else) just enough to show `tile` on both axes. */
@@ -47,8 +47,9 @@ function keepInView(list: HTMLElement, tile: HTMLElement, smooth: boolean) {
  * the page, or of a wide card) or a strip under the slide. Either way it
  * scrolls by itself. The current slide is outlined and kept in view as it
  * changes, by scrolling the rail only, never the page, so following a live run
- * doesn't drag the reader around. A chip counts the fields that cite a slide.
- * One tile is a tab stop; the arrow keys move between them.
+ * doesn't drag the reader around. Each tile has its number in its top-right
+ * corner, after an accent dot when a field cites the slide. One tile is a tab
+ * stop; the arrow keys move between them.
  */
 export default function SlideRail({
   views,
@@ -59,7 +60,7 @@ export default function SlideRail({
   layout = "auto",
 }: {
   views: SlideView[];
-  /** Image URL for a page, or null to show its number. */
+  /** Image URL for a page, or null for an empty tile. */
   imageFor: (index: number) => string | null;
   /** Width over height of the deck's pages. */
   aspect: number;
@@ -107,7 +108,7 @@ export default function SlideRail({
     >
       {total === 0
         ? Array.from({ length: PLACEHOLDERS }, (_, i) => (
-            <li key={i} aria-hidden className={`pl-5.5 ${LAYOUT[layout].tile}`}>
+            <li key={i} aria-hidden className={LAYOUT[layout].tile}>
               <div className="animate-pulse rounded-lg bg-ink/[0.06]" style={{ aspectRatio: aspect }} />
             </li>
           ))
@@ -123,30 +124,19 @@ export default function SlideRail({
                   onClick={() => onPick(view.index)}
                   aria-current={on ? "true" : undefined}
                   aria-label={`Slide ${view.index}${cited ? `, ${cited === 1 ? "1 field" : `${cited} fields`} cited` : ""}`}
-                  className="group flex w-full items-start gap-1.5 rounded-lg text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className={`relative block w-full rounded-[10px] border-2 p-px transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                    on ? "border-accent" : "border-transparent hover:border-ink/15"
+                  }`}
                 >
+                  <SlideFrame view={view} image={imageFor(view.index)} aspect={aspect} />
                   <span
                     aria-hidden
-                    className={`w-4 shrink-0 pt-0.5 text-right text-[11px] tabular-nums ${
-                      on ? "font-semibold text-accent" : "text-ink/40"
+                    className={`absolute right-1.5 top-1.5 flex items-center gap-1 rounded bg-paper/85 px-1 text-[10px] leading-4 tabular-nums ${
+                      on ? "font-semibold text-ink" : "text-ink/55"
                     }`}
                   >
+                    {cited > 0 && <span className="size-1.5 rounded-full bg-accent" />}
                     {view.index}
-                  </span>
-                  <span
-                    className={`relative min-w-0 flex-1 rounded-[10px] border-2 p-px transition-colors ${
-                      on ? "border-accent" : "border-transparent group-hover:border-ink/15"
-                    }`}
-                  >
-                    <SlideFrame view={view} image={imageFor(view.index)} aspect={aspect} animate={false} found={null} />
-                    {cited > 0 && (
-                      <span
-                        aria-hidden
-                        className="absolute right-1 top-1 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 tabular-nums text-white shadow-sm"
-                      >
-                        {cited}
-                      </span>
-                    )}
                   </span>
                 </button>
               </li>

@@ -2,7 +2,7 @@
 
 import { useRef, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import type { SlideView } from "./selectors";
-import SlideFrame, { type FrameFinding } from "./SlideFrame";
+import SlideFrame from "./SlideFrame";
 
 /** How far a swipe has to travel sideways, in px, to turn the page. */
 const SWIPE_PX = 40;
@@ -21,22 +21,19 @@ export default function SlideStage({
   image,
   aspect,
   onChange,
-  animate,
   found,
   blank,
 }: {
   /** The slide in view. */
   view: SlideView;
   total: number;
-  /** Its image URL, or null to show its number. */
+  /** Its image URL, or null for an empty frame. */
   image: string | null;
   /** Width over height of the deck's pages. */
   aspect: number;
   onChange: (index: number) => void;
-  /** Whether to play the glow on a find (a live run, motion allowed). */
-  animate: boolean;
-  /** A field just found on this slide. */
-  found: FrameFinding | null;
+  /** Set while a field just found on this slide glows; see `SlideFrame`. */
+  found: string | null;
   /** Shown instead of the slide when there are no page images to draw. */
   blank?: ReactNode;
 }) {
@@ -82,7 +79,7 @@ export default function SlideStage({
           onPointerUp={onPointerUp}
           onPointerCancel={() => (swipeFrom.current = null)}
         >
-          <SlideFrame view={view} image={image} aspect={aspect} animate={animate} found={found} />
+          <SlideFrame view={view} image={image} aspect={aspect} found={found} />
         </div>
       )}
     </div>
