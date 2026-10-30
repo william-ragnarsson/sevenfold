@@ -9,7 +9,7 @@ import { useAnalysis } from "./AnalysisProvider";
  * sidebar. Null when nothing is running.
  */
 export function useLiveRun() {
-  const { status, stream, currentId, file } = useAnalysis();
+  const { status, stream, currentId, file, queue } = useAnalysis();
   if (status !== "loading" || !currentId) return null;
 
   const activeIndex = stream.steps.findIndex((s) => s.status === "active");
@@ -21,6 +21,8 @@ export function useLiveRun() {
     // reads 1/5 → 5/5, matching CurrentAnalysisCard.
     step: activeIndex === -1 ? stream.steps.length : activeIndex + 1,
     steps: stream.steps.length,
+    /** Decks waiting in the queue behind this one. */
+    queued: queue.filter((deck) => deck.status === "queued").length,
   };
 }
 

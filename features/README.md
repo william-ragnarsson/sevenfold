@@ -38,8 +38,8 @@ feedback share the Results page, and research has none: its Sources close the me
 
 | Path | What's on it |
 | --- | --- |
-| `/dashboard` | The New analysis button, the account's numbers, the last six analyses as cards with their decks' covers |
-| `/dashboard/analyses` | The New analysis button, then every analysis on the account as cards or a list |
+| `/dashboard` | The New analysis button (one PDF or several, queued), the account's numbers, the last six analyses as cards with their decks' covers |
+| `/dashboard/analyses` | The New analysis button (one PDF or several, queued), then every analysis on the account as cards or a list |
 | `/dashboard/analyses/<id>` | The overview: the call, and the run as a log, one chapter per stage, each line linking to the page that has it in full |
 | `/dashboard/analyses/<id>/<slug>` | One page: `summary` (the call, the ratings, the memo's key facts, the closest competitors and what to fix first, each linking to its page), `deck`, `memo` (the memo, then research's Sources), `founders`, `landscape`, or `results` (the verdict, then the scorecard, then the feedback) |
 

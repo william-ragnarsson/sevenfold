@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore, type ReactNode } from "react";
 import AnalysisCard from "./AnalysisCard";
+import AnalysisQueue from "./AnalysisQueue";
 import { useAnalysis } from "./AnalysisProvider";
 import AnalysisRow from "./AnalysisRow";
 import CurrentAnalysisCard from "./CurrentAnalysisCard";
@@ -58,6 +59,7 @@ export default function AnalysisWorkspace() {
   return (
     <div className="space-y-8">
       {status === "loading" && <CurrentAnalysisCard />}
+      <AnalysisQueue />
 
       <LegacyImportPrompt onImported={() => void refreshHistory()} />
 

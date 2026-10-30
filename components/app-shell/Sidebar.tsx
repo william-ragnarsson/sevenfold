@@ -192,7 +192,9 @@ function RunLink({ run, onNavigate }: { run: LiveRun; onNavigate?: () => void })
             {run.step}/{run.steps}
           </span>
         </span>
-        <span className="block truncate text-xs font-normal text-ink/60">{run.label}…</span>
+        <span className="block truncate text-xs font-normal text-ink/60">
+          {run.label}…{run.queued > 0 && ` · ${run.queued} queued`}
+        </span>
       </span>
     </Link>
   );
