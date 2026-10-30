@@ -1,17 +1,23 @@
 import { ROUTES } from "./routes";
 
 /**
- * The pages an analysis has, in sidebar order: one per product (verdict,
- * scorecard and feedback share Results, and research shows on Memo), plus the
- * whole report on one page at the end. Each lives at
- * `/dashboard/analyses/<id>/<slug>`; the analysis's overview is the bare
- * `/dashboard/analyses/<id>`.
+ * The pages an analysis has, in sidebar order: a summary of them all, then one
+ * per product (verdict, scorecard and feedback share Results, and research
+ * shows on Memo). Each
+ * lives at `/dashboard/analyses/<id>/<slug>`; the analysis's overview is the
+ * bare `/dashboard/analyses/<id>`.
  *
  * Plain data, no React, so the route can check a slug on the server. What each
  * page shows, and how its status is worked out, is the client registry in
  * `components/features/analyze/productTabs.tsx`, keyed by these slugs.
  */
 export const PRODUCT_PAGES = [
+  {
+    // A glimpse of the other pages, so it has no product of its own.
+    slug: "summary",
+    label: "Summary",
+    description: "The call, the ratings behind it, and what to fix first, on one page.",
+  },
   {
     slug: "deck",
     label: "Deck",
@@ -37,11 +43,6 @@ export const PRODUCT_PAGES = [
     slug: "results",
     label: "Results",
     description: "The invest or pass call, the ratings behind it, and what to fix in the deck.",
-  },
-  {
-    slug: "report",
-    label: "Full report",
-    description: "Everything above, on one page.",
   },
 ] as const;
 

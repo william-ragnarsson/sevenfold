@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import ReportView from "./ReportView";
 import { REPORT_SECTIONS, type ReportEnv } from "./reportSections";
-import { useAnalysisAside, useAnalysisScroll } from "./AnalysisFrame";
+import { useAnalysisAside } from "./AnalysisFrame";
 import { useReport } from "./ReportProvider";
 import { PRODUCT_TABS, tabAbsent, tabStatus } from "./productTabs";
 import { analysisPath, deckSlidePath } from "@/lib/routes";
@@ -11,8 +10,7 @@ import { productPage, type ProductSlug } from "@/lib/products";
 
 /**
  * One product's page of an analysis: the report sections `productTabs.tsx`
- * lists for it, stacked. The "report" page is the whole report with its
- * chapters nav.
+ * lists for it, stacked.
  */
 export default function ProductView({
   slug,
@@ -23,24 +21,19 @@ export default function ProductView({
   slide?: number | null;
 }) {
   const report = useReport();
-  const scrollRef = useAnalysisScroll();
   const aside = useAnalysisAside();
   // The frame shows the loading and missing states.
   if (!report?.state) return null;
   const { id, state, active, pdf, failure, canEdit, editMemo, saveStatus } = report;
   const tab = PRODUCT_TABS[slug];
-  // The full report keeps every section in its column, the slide rail included.
   const env: ReportEnv = {
     pdf,
     slide,
     slideHref: (n) => deckSlidePath(id, n),
+    pageHref: (page) => analysisPath(id, page),
     memo: canEdit ? { edit: editMemo, saveStatus } : undefined,
-    aside: tab.sections === "all" ? null : aside,
+    aside,
   };
-
-  if (tab.sections === "all") {
-    return <ReportView state={state} active={active} env={env} scrollRef={scrollRef} />;
-  }
 
   const page = productPage(slug);
   const failed = tabStatus(slug, state, active, !active && failure !== null) === "failed";
@@ -52,13 +45,13 @@ export default function ProductView({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-3xl font-bold tracking-tight text-ink">{page.label}</h1>
-        <p className="mt-1 text-muted">{page.description}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">{page.label}</h1>
+        <p className="mt-1 text-[15px] text-muted">{page.description}</p>
       </header>
       {sections.length > 0 ? (
         <div className="space-y-8">
           {sections.map((s) => (
-            <section key={s.id} id={s.id} className="scroll-mt-24">
+            <section key={s.id} id={s.id} className="scroll-mt-16 lg:scroll-mt-6">
               {s.render(state, active, env)}
             </section>
           ))}

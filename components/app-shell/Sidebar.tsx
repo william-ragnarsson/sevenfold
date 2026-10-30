@@ -6,14 +6,9 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { useReport, type OpenReport } from "@/components/features/analyze/ReportProvider";
 import { useLiveRun, type LiveRun } from "@/components/features/analyze/useLiveRun";
-import {
-  PRODUCT_SLUGS,
-  ProductTabIcon,
-  STATUS_META,
-  tabStatus,
-} from "@/components/features/analyze/productTabs";
+import { ProductTabIcon, STATUS_META, tabStatus } from "@/components/features/analyze/productTabs";
 import ProductIcon from "@/components/layout/ProductIcon";
-import { productPage, productSlugOf } from "@/lib/products";
+import { PRODUCT_PAGES, productSlugOf } from "@/lib/products";
 import { analysisPath, DASHBOARD_PAGES, ROUTES } from "@/lib/routes";
 
 /** A quiet row that lifts out as a white card on the page you're on. */
@@ -27,10 +22,10 @@ const ITEM_OFF = "text-ink/70 hover:bg-white/60 hover:text-ink";
  * The dashboard's sidebar: a 232px column in the page's own paper, set off by
  * a hairline rather than a colour of its own, with the logo, the dashboard's
  * pages, and who's signed in at the bottom. Inside an analysis the pages give
- * way to that analysis's tabs: its overview, one per product with how far it
- * got, and the full report. AppShell puts it beside the page from `lg` up and
- * in a drawer below that; `onNavigate` lets the drawer close when a link is
- * followed, even one to the page you're already on.
+ * way to that analysis's tabs: its overview, then one per product with how far
+ * it got. AppShell puts it beside the page from `lg` up and in a drawer below
+ * that; `onNavigate` lets the drawer close when a link is followed, even one
+ * to the page you're already on.
  */
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -107,7 +102,7 @@ function AnalysisNav({
   );
 }
 
-/** The open analysis's name, then its overview, a tab per product, and the full report. */
+/** The open analysis's name, then its overview and a tab per product. */
 function AnalysisTabs({
   report,
   pathname,
@@ -120,7 +115,6 @@ function AnalysisTabs({
   const { id, name, state, active, failure, settled } = report;
   const current = productSlugOf(pathname);
   const stopped = !active && failure !== null;
-  const full = productPage("report");
 
   return (
     <>
@@ -135,12 +129,12 @@ function AnalysisTabs({
         <ProductTabIcon slug="overview" className="h-[18px] w-[18px] opacity-80" />
         Overview
       </SideLink>
-      {PRODUCT_SLUGS.map((slug) => {
+      {PRODUCT_PAGES.map(({ slug, label }) => {
         const status = state ? tabStatus(slug, state, active, stopped) : null;
         return (
           <SideLink key={slug} href={analysisPath(id, slug)} active={current === slug} onNavigate={onNavigate}>
             <ProductTabIcon slug={slug} className="h-[18px] w-[18px] opacity-80" />
-            <span className="min-w-0 flex-1 truncate">{productPage(slug).label}</span>
+            <span className="min-w-0 flex-1 truncate">{label}</span>
             {status && (
               <>
                 <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_META[status].dot}`} aria-hidden />
@@ -150,11 +144,6 @@ function AnalysisTabs({
           </SideLink>
         );
       })}
-      <div className="mx-6 my-2 border-t border-ink/10" aria-hidden />
-      <SideLink href={analysisPath(id, "report")} active={current === "report"} onNavigate={onNavigate}>
-        <ProductTabIcon slug="report" className="h-[18px] w-[18px] opacity-80" />
-        {full.label}
-      </SideLink>
     </>
   );
 }

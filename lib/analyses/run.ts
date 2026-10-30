@@ -73,7 +73,9 @@ export async function runAnalysis({
     },
   };
 
+  let deckRead = false;
   try {
+    send({ type: "stage", id: "deck", state: "start" });
     const { deckText } =
       "text" in deck
         ? provideDeck(deck.text, deck.pageCount ?? null, sink)
@@ -82,6 +84,8 @@ export async function runAnalysis({
             sink,
             signal,
           });
+    send({ type: "stage", id: "deck", state: "done" });
+    deckRead = true;
     const playbook = loadPlaybook();
 
     const report = await getDiligenceEngine().run({ deckText, playbook }, send, signal);
@@ -100,6 +104,7 @@ export async function runAnalysis({
       await recorder.fail(message);
       return { ok: false, message };
     }
+    if (!deckRead) send({ type: "stage", id: "deck", state: "failed" });
     if (err instanceof EmptyDeckError) return failWith(err.message);
     if (err instanceof Error && /(API_?KEY is not set|is not a recognised model id)/i.test(err.message)) {
       // Surface the engine's own config message (missing API key, or an
@@ -148,6 +153,8 @@ export function logEvent(tag: string, event: ProgressEvent): void {
     console.log(`${tag}   slide ${event.index}: ${event.text.length} chars${event.truncated ? " (clipped)" : ""}`);
   } else if (event.type === "deck-read") {
     console.log(`${tag} 🗂 deck read via ${event.via}${event.unassigned ? " (no slide markers)" : ""}`);
+  } else if (event.type === "stage") {
+    console.log(`${tag} ▶ ${event.id} ${event.state}`);
   } else {
     console.log(`${tag} •`, event.phase, "—", event.message);
   }

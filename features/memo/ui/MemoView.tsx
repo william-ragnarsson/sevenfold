@@ -119,7 +119,7 @@ export default function MemoView({
       </div>
       <SourceLegend />
       {DOC_SECTIONS.map((section) => (
-        <section key={section.title} id={sectionSlug(section.title)} className="scroll-mt-24">
+        <section key={section.title} id={sectionSlug(section.title)} className="scroll-mt-16 lg:scroll-mt-6">
           <div className="bg-ink px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] text-paper">
             {section.title}
           </div>

@@ -67,8 +67,8 @@ export async function runStages<S extends Stage<StageContext<unknown, never>>>(
   const ctl = new AbortController();
   const signal = outer ? AbortSignal.any([outer, ctl.signal]) : ctl.signal;
   const ctx = makeContext(signal);
-  // Status events are core events, which every pipeline's emit accepts.
-  const emitStatus = ctx.emit as unknown as Emit<CoreEvent>;
+  // Status and stage events are core events, which every pipeline's emit accepts.
+  const emitCore = ctx.emit as unknown as Emit<CoreEvent>;
 
   let fail: (err: unknown) => void = () => {};
   const failed = new Promise<never>((_, reject) => {
@@ -90,14 +90,19 @@ export async function runStages<S extends Stage<StageContext<unknown, never>>>(
       }
       const optional = needs.filter((need) => !need.critical);
       if (stage.waitingStatus && optional.some((need) => !need.settled)) {
-        emitStatus({ type: "status", ...stage.waitingStatus });
+        emitCore({ type: "status", ...stage.waitingStatus });
       }
       await Promise.all(optional.map((need) => need.outcome));
       signal.throwIfAborted();
-      if (stage.status) emitStatus({ type: "status", ...stage.status });
+      if (stage.status) emitCore({ type: "status", ...stage.status });
+      emitCore({ type: "stage", id: stage.id, state: "start" });
       await stage.run(ctx);
+      emitCore({ type: "stage", id: stage.id, state: "done" });
       return true;
     } catch (err) {
+      // Only the stage that failed says so: the ones a failure or a cancel
+      // stopped short just never finish.
+      if (!signal.aborted) emitCore({ type: "stage", id: stage.id, state: "failed" });
       if (stage.critical !== false) {
         fail(err);
         ctl.abort();

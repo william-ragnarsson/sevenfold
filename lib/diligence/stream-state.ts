@@ -51,6 +51,17 @@ export interface UsageTotals {
 }
 
 /**
+ * When one stage ran, in ms since the run's `startedAt`, stamped as its
+ * `stage` events arrive. `end` is set once it finished; `failed` when it
+ * failed rather than finished.
+ */
+export interface StageTiming {
+  start?: number;
+  end?: number;
+  failed?: true;
+}
+
+/**
  * The live and saved state of one analysis. Each product keeps its own slice
  * (the `extends` list) and folds its own events into it; this adds the run's
  * progress, the form and the cost overlay.
@@ -74,7 +85,16 @@ export interface AnalysisState extends ResearchState, VerdictState, FeedbackStat
    * it existed.
    */
   deck?: DeckState;
+  /**
+   * Each stage's timing, keyed by stage id ("deck" for reading the deck).
+   * A stage with no entry hasn't started. Absent on reports saved before
+   * stages were tracked, which only their content can date.
+   */
+  stages?: Record<string, StageTiming>;
 }
+
+/** Most stages `stages` keeps. */
+const MAX_STAGES = 24;
 
 const STEP_ORDER: { phase: DiligencePhase; label: string }[] = [
   { phase: "extracting", label: "Reading deck" },
@@ -99,6 +119,7 @@ export function initialState(): AnalysisState {
     error: null,
     usage: null,
     ...initialScorecardState(),
+    stages: {},
   };
 }
 
@@ -216,6 +237,16 @@ function reduceEvent(state: AnalysisState, event: ProgressEvent): AnalysisState 
 
     case "error":
       return { ...state, error: event.message };
+
+    case "stage": {
+      // Ids come from the stage list, so this only guards against a runaway.
+      if (!state.stages?.[event.id] && Object.keys(state.stages ?? {}).length >= MAX_STAGES) return state;
+      const at = Math.max(0, Date.now() - (state.startedAt ?? Date.now()));
+      const prev = state.stages?.[event.id] ?? {};
+      const timing: StageTiming =
+        event.state === "start" ? { start: at } : event.state === "done" ? { ...prev, end: at } : { ...prev, end: at, failed: true };
+      return { ...state, stages: { ...state.stages, [event.id]: timing } };
+    }
 
     default:
       // Every other event belongs to one product, which folds it into its own slice.

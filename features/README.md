@@ -31,17 +31,17 @@ app/                    routes
 
 ## Pages
 
-Each analysis is a set of pages under `/dashboard/analyses/<id>`, one per
-product, except that verdict, scorecard and feedback share the Results page,
-and research has none: its Sources close the memo page
+Each analysis is a set of pages under `/dashboard/analyses/<id>`: a Summary
+of them all, then one per product, except that verdict, scorecard and
+feedback share the Results page, and research has none: its Sources close the memo page
 (`/dashboard/analyses/<id>/research` redirects there).
 
 | Path | What's on it |
 | --- | --- |
 | `/dashboard` | The New analysis button (one PDF or several, queued), the account's numbers, the last six analyses as cards with their decks' covers |
 | `/dashboard/analyses` | The New analysis button (one PDF or several, queued), then every analysis on the account as cards or a list |
-| `/dashboard/analyses/<id>` | The overview: the call, and one card per page saying how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One page: `deck`, `memo` (the memo, then research's Sources), `founders`, `landscape`, `results` (the verdict, then the scorecard, then the feedback), or `report` (everything) |
+| `/dashboard/analyses/<id>` | The overview: the call, and the run as a log, one chapter per stage, each line linking to the page that has it in full |
+| `/dashboard/analyses/<id>/<slug>` | One page: `summary` (the call, the ratings, the memo's key facts, the closest competitors and what to fix first, each linking to its page), `deck`, `memo` (the memo, then research's Sources), `founders`, `landscape`, or `results` (the verdict, then the scorecard, then the feedback) |
 
 Inside an analysis the sidebar swaps the dashboard's pages for the analysis's
 tabs, each with a status dot. The pieces:
@@ -49,18 +49,21 @@ tabs, each with a status dot. The pieces:
 - `lib/products.ts`: the page list (slug, label, description). The sidebar,
   the overview and the route all read it.
 - `components/features/analyze/productTabs.tsx`: for each page, which report
-  sections it shows, its status (ready, running, didn't finish, not in this
-  report) and its one-line summary.
+  sections it shows and its status (ready, running, didn't finish, not in
+  this report), which the sidebar's dots show.
+- `components/features/analyze/RunLog.tsx`: the overview's log. Each stage's
+  chapter (`CHAPTERS`) says what it waits on, which page it links to, and
+  which few lines of its findings to show.
 - `components/features/analyze/ReportProvider.tsx`: loads the open analysis
   once, from the live run or the database, for the page and the sidebar.
-- `app/dashboard/analyses/[id]/layout.tsx` and `AnalysisFrame.tsx`: the header
-  and loading states every page of an analysis shares, and the right-hand
-  column a page can put its own sidebar in (`ReportEnv.aside`; the Deck page's
-  slide rail).
+- `app/dashboard/analyses/[id]/layout.tsx` and `AnalysisFrame.tsx`: the
+  loading states, failure banner and narrow-screen page pills every page of an
+  analysis shares, and the right-hand column a page can put its own sidebar in
+  (`ReportEnv.aside`; the Deck page's slide rail).
 
 Old `/due-diligence/…` and `/dashboard/due-diligence/…` links redirect here,
-and an analysis's old `scorecard` and `feedback` pages redirect to its
-`results` page (`next.config.ts`).
+an analysis's old `scorecard` and `feedback` pages redirect to its `results`
+page, and its old `report` page to its overview (`next.config.ts`).
 
 `components/report/` holds the shared report primitives (`Row`, `Skeleton`,
 `SourceBadge`, `SourceLegend`, `SourcePicker`, `SourceRow`, `SlideChips`,
@@ -138,7 +141,8 @@ The full checklist is in the root `AGENTS.md`, under "Adding a product (or a
 new stage)". In short: the folder here, then a line or two in each of
 `lib/diligence/types.ts`, `form-schema.ts`, `stream-state.ts` and `engine.ts`,
 `lib/analyses/run.ts`, `lib/config.ts`, `reportSections.tsx`,
-`lib/products.ts`, `productTabs.tsx` and `lib/analyses/markdown.ts`.
+`lib/products.ts`, `productTabs.tsx`, `RunLog.tsx` (its `CHAPTERS` entry) and
+`lib/analyses/markdown.ts`.
 Everything else stays in the product's folder.
 
 ## Working on one product
