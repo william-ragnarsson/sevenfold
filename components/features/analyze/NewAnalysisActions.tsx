@@ -17,7 +17,7 @@ const BUSY = "An analysis is already running";
  * The landing page keeps the big dropzone (`AnalysisLauncher`) instead.
  */
 export default function NewAnalysisActions() {
-  const { status, setFile, start, startSample } = useAnalysis();
+  const { status, setFile, start, startSample, replaySample } = useAnalysis();
   const busy = status === "loading";
   const inputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
@@ -77,6 +77,17 @@ export default function NewAnalysisActions() {
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <div className="flex flex-wrap items-center gap-2">
+        {process.env.NODE_ENV !== "production" && (
+          <button
+            type="button"
+            onClick={replaySample}
+            disabled={busy}
+            title={busy ? BUSY : "Plays a scripted run of the sample. No request, no cost."}
+            className="rounded-full px-3 py-2.5 font-mono text-xs text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Replay sample (free, dev)
+          </button>
+        )}
         <button
           type="button"
           onClick={() => startSample(AIRBNB_SAMPLE)}

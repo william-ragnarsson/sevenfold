@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { useAnalysis } from "./AnalysisProvider";
+import { REPLAY_ID, useAnalysis } from "./AnalysisProvider";
 import { useAuth } from "@/components/features/auth/AuthProvider";
 import { getAnalysis, getRunClaim, type AnalysisRecord } from "@/lib/analyses/store";
 import { isStalled, STALLED_MESSAGE } from "@/lib/analyses/status";
@@ -150,9 +150,15 @@ export default function ReportProvider({ children }: { children: ReactNode }) {
   const state = useMemo(() => (saved && edited ? { ...saved, form: edited } : saved), [saved, edited]);
   const active = isLive ? status === "loading" : record !== null && inProgress(record);
   // A run in this tab is editable once it's done; one saved elsewhere once it
-  // has stopped. Accounts off or signed out, there's nowhere to save to.
+  // has stopped. Accounts off or signed out, there's nowhere to save to, and a
+  // replay was never saved.
   const canEdit =
-    state !== null && !active && user !== null && !user.is_anonymous && (isLive ? status === "done" : record !== null);
+    state !== null &&
+    !active &&
+    user !== null &&
+    !user.is_anonymous &&
+    id !== REPLAY_ID &&
+    (isLive ? status === "done" : record !== null);
 
   const editMemo = useMemoEditor(id, state, canEdit, isLive ? undefined : (record?.state?.startedAt ?? null), setOverlays, setSaveStatus);
   const name =

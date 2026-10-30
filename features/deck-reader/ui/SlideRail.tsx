@@ -11,18 +11,10 @@ const EDGE_PX = 8;
 /** Tiles shown while the deck is still opening. */
 const PLACEHOLDERS = 4;
 
-/**
- * How the rail is laid out. A column fills a `relative` parent and scrolls
- * down; a strip scrolls sideways; `auto` is a strip that turns into a column
- * on a wide card (`@3xl`, so inside an `@container`).
- */
-export type RailLayout = "auto" | "column" | "strip";
+/** How the rail is laid out: a column fills a `relative` parent and scrolls down; a strip scrolls sideways. */
+export type RailLayout = "column" | "strip";
 
 const LAYOUT: Record<RailLayout, { list: string; tile: string }> = {
-  auto: {
-    list: "flex gap-3 overflow-x-auto p-1 pb-2 @3xl:absolute @3xl:inset-0 @3xl:flex-col @3xl:overflow-x-hidden @3xl:overflow-y-auto @3xl:pb-1",
-    tile: "w-28 shrink-0 @3xl:w-auto",
-  },
   column: { list: "absolute inset-0 flex flex-col gap-3 overflow-y-auto px-3 pb-4 pt-1", tile: "" },
   strip: { list: "flex gap-3 overflow-x-auto p-1 pb-2", tile: "w-28 shrink-0" },
 };
@@ -43,13 +35,13 @@ function keepInView(list: HTMLElement, tile: HTMLElement, smooth: boolean) {
 }
 
 /**
- * Every slide as a thumbnail, to pick one from: a column down the right (of
- * the page, or of a wide card) or a strip under the slide. Either way it
- * scrolls by itself. The current slide is outlined and kept in view as it
- * changes, by scrolling the rail only, never the page, so following a live run
- * doesn't drag the reader around. Each tile has its number in its top-right
- * corner, after an accent dot when a field cites the slide. One tile is a tab
- * stop; the arrow keys move between them.
+ * Every slide as a thumbnail, to pick one from: a column down the page's
+ * right or a strip under the slide. Either way it scrolls by itself. The
+ * current slide is outlined and kept in view as it changes, by scrolling the
+ * rail only, never the page, so following a live run doesn't drag the reader
+ * around. Each tile has its number in its top-right corner, after an accent
+ * dot when a field cites the slide. One tile is a tab stop; the arrow keys
+ * move between them.
  */
 export default function SlideRail({
   views,
@@ -57,7 +49,7 @@ export default function SlideRail({
   aspect,
   current,
   onPick,
-  layout = "auto",
+  layout,
 }: {
   views: SlideView[];
   /** Image URL for a page, or null for an empty tile. */
@@ -67,7 +59,7 @@ export default function SlideRail({
   /** The slide on the stage, 1-based. */
   current: number;
   onPick: (index: number) => void;
-  layout?: RailLayout;
+  layout: RailLayout;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
   const placed = useRef(false);

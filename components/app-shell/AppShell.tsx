@@ -18,8 +18,9 @@ import Sidebar from "./Sidebar";
  *
  * The frame is exactly one screen tall and `main` is the scroll region, so the
  * sidebar stays put and there is one scrollbar. A page that needs a scroll box
- * of its own (the report, for its chapter scroll-spy) fills `main` with an
- * `h-full overflow-y-auto` box, and then `main` itself never overflows.
+ * of its own (an analysis's frame, which takes each of its pages back to the
+ * top) fills `main` with an `h-full overflow-y-auto` box, and then `main`
+ * itself never overflows.
  *
  * Inside an analysis (`/dashboard/analyses/<id>/…`) the report is loaded once,
  * here, for both the page and the sidebar's tabs beside it (`ReportProvider`).

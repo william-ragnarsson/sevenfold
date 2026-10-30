@@ -14,10 +14,6 @@
   --accent: #1a6b3f;
   --accent-bright: #34d17a;
   --marker: #d6f56b;
-  /* Text on ink surfaces, such as the overview's full-report card: body, then
-     labels and captions. */
-  --on-ink: #c9c5ba;
-  --on-ink-muted: #8f8b80;
 }
 
 @theme inline {
@@ -30,8 +26,6 @@
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
   --color-marker: var(--marker);
-  --color-on-ink: var(--on-ink);
-  --color-on-ink-muted: var(--on-ink-muted);
   --font-sans: var(--font-geist-sans);
   --font-serif: var(--font-instrument-serif);
   --font-mono: var(--font-geist-mono);

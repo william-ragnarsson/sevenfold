@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import Card from "@/components/ui/Card";
 import {
   buildSlideViews,
   citationTour,
@@ -16,7 +15,7 @@ import {
 import type { DeckState } from "@/features/deck-reader/types";
 import type { DueDiligenceForm } from "@/lib/diligence/types";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
-import { findDwell, sweepDwell, useDeckSlide, useDeckThumbnails, useNearViewport, usePacedReveal, useReducedMotion } from "./hooks";
+import { findDwell, sweepDwell, useDeckSlide, useDeckThumbnails, usePacedReveal, useReducedMotion } from "./hooks";
 import SlideStage from "./SlideStage";
 import SlideRail, { type RailLayout } from "./SlideRail";
 import SlideDetail from "./SlideDetail";
@@ -37,17 +36,15 @@ function UnplacedText({ text, label }: { text: string; label: string }) {
 }
 
 /**
- * The Deck section of the report: one slide big, every slide as a thumbnail
- * in a rail to pick from, and under the big slide what was read off it and the
- * fields extracted from it. On its own page it sits straight on the page and
- * the rail is the page's right-hand sidebar (`sidebar`). In the full report,
- * among the other cards, it's a card too, with the rail down its right. Either
- * way, when there isn't room the rail is a strip between the slide and its
- * text. A saved report opens on slide 1, or the slide a link asks for. While a
- * run is live the stage follows it: page by page as the
- * reader goes through the deck, then to each slide a field is found on, as
- * it's found. Afterwards it stays as a per-slide record of what was read off
- * each page and which fields came from it. Everything shown is derived from
+ * The Deck page: one slide big, every slide as a thumbnail in a rail to pick
+ * from, and under the big slide what was read off it and the fields extracted
+ * from it. It sits straight on the page, and the rail is the page's right-hand
+ * sidebar (`sidebar`) from `lg` up and a strip between the slide and its text
+ * below that. A saved report opens on slide 1, or the slide a link asks for.
+ * While a run is live the stage follows it: page by page as the reader goes
+ * through the deck, then to each slide a field is found on, as it's found.
+ * Afterwards it stays as a per-slide record of what was read off each page and
+ * which fields came from it. Everything shown is derived from
  * `AnalysisState.deck`, the form and the checked citations (`evidence`) by
  * the selectors in `features/deck-reader`; the slide images are drawn in the
  * browser from `pdf` when there is one.
@@ -61,7 +58,7 @@ export default function DeckSection({
   active,
   pdf,
   openSlide = null,
-  sidebar = null,
+  sidebar,
 }: {
   deck: DeckState | undefined;
   form: DueDiligenceForm;
@@ -72,11 +69,11 @@ export default function DeckSection({
   /** A slide to open, as if picked: a link's `?slide=4`, e.g. from a feedback item. */
   openSlide?: number | null;
   /**
-   * The page's right-hand column, to put the rail in. Set on the Deck page,
-   * where the section drops its card. It shows from `lg` up; below that the
-   * rail is a strip under the slide.
+   * The page's right-hand column, to put the rail in. It shows from `lg` up;
+   * below that the rail is a strip under the slide. Null until the frame has
+   * drawn it.
    */
-  sidebar?: HTMLElement | null;
+  sidebar: HTMLElement | null;
 }) {
   const reducedMotion = useReducedMotion();
   const animate = active && !reducedMotion;
@@ -119,11 +116,10 @@ export default function DeckSection({
   // The latest find, while it's on the stage: the slide glows and the field flashes.
   const found = animate && following && stop?.slide === current ? String(toured) : null;
 
-  const [nearRef, near] = useNearViewport<HTMLDivElement>();
-  const thumbs = useDeckThumbnails(pdf, near && !!deck);
+  const thumbs = useDeckThumbnails(pdf, !!deck);
   // No PDF stored (MCP runs) or one pdf.js can't open: the tiles stay empty.
   const images = !!pdf && thumbs.status !== "error";
-  useDeckSlide(pdf, current, near && !!deck && images && views.length > 0);
+  useDeckSlide(pdf, current, !!deck && images && views.length > 0);
   const aspect = thumbs.aspect ?? 16 / 9;
   const imageFor = (index: number) => thumbs.urls[index - 1] ?? null;
 
@@ -133,8 +129,6 @@ export default function DeckSection({
   // read with no pages at all (pasted text, no markers) has no slide column.
   const waiting = views.length === 0 && !deck?.read;
   const slideColumn = views.length > 0 || waiting;
-  // In the card, a wide one puts the rail beside the slide and its text.
-  const railBeside = slideColumn && !sidebar;
 
   const rail = (layout: RailLayout) => (
     <SlideRail
@@ -147,105 +141,68 @@ export default function DeckSection({
     />
   );
 
-  const progress = <span className="text-xs tabular-nums text-muted">{deckProgressLabel(deck, views, scanning)}</span>;
-  const followLive = active && picked !== null && (
-    <button
-      type="button"
-      onClick={() => setPicked(null)}
-      className="text-xs font-medium text-accent hover:underline"
-    >
-      Follow live
-    </button>
-  );
-
-  const body = (
-    // Rail beside, on a wide card: the stage over the details on the left, the
-    // rail the full height of both on the right. Otherwise stage, rail (if it
-    // isn't in the page's sidebar), details, one under another.
-    <div
-      className={`grid gap-5 ${
-        railBeside ? "@3xl:grid-cols-[minmax(0,1fr)_10rem] @3xl:grid-rows-[auto_1fr]" : ""
-      }`}
-    >
-      {slideColumn && (
-        <div className="min-w-0">
-          {currentView ? (
-            <SlideStage
-              view={currentView}
-              total={views.length}
-              image={thumbs.large[current] ?? imageFor(current)}
-              aspect={aspect}
-              onChange={setPicked}
-              found={found}
-              blank={
-                images ? null : (
-                  <p className="text-sm text-muted">
-                    {pdf
-                      ? "No slide images: the stored PDF couldn't be opened."
-                      : "No slide images: there's no PDF stored for this analysis."}
-                  </p>
-                )
-              }
-            />
-          ) : (
-            <div aria-hidden className="animate-pulse rounded-lg bg-ink/[0.06]" style={{ aspectRatio: aspect }} />
-          )}
-        </div>
-      )}
-
-      {railBeside && (
-        // Wide, the rail is laid over this cell so it takes the left column's height and scrolls.
-        <div className="relative min-w-0 @3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1 @3xl:min-h-96">
-          {rail("auto")}
-        </div>
-      )}
-      {slideColumn && sidebar && <div className="min-w-0 lg:hidden">{rail("strip")}</div>}
-
-      <div className={`min-w-0 space-y-5 @3xl:col-start-1 ${slideColumn ? "border-t border-ink/10 pt-5" : ""}`}>
-        {unmapped && deck?.unassigned ? (
-          <UnplacedText text={deck.unassigned} label="Everything it read, as one block" />
-        ) : currentView ? (
-          <SlideDetail key={current} view={currentView} active={active} highlight={found ? (stop?.key ?? null) : null} />
-        ) : (
-          waiting && <p className="text-sm text-muted">Opening the deck…</p>
-        )}
-
-        {!unmapped && deck?.unassigned && (
-          <UnplacedText text={deck.unassigned} label="Text before the first slide marker" />
-        )}
-
-        {via && <p className="text-xs text-muted">Read with {via}.</p>}
-      </div>
-    </div>
-  );
-
-  if (!sidebar) {
-    return (
-      <Card
-        eyebrow="Deck"
-        className="fade-up"
-        actions={
-          <>
-            {followLive}
-            {progress}
-          </>
-        }
-      >
-        <div ref={nearRef} className="@container px-5 pb-5">
-          {body}
-        </div>
-      </Card>
-    );
-  }
-
   return (
-    <div ref={nearRef} className="@container">
+    <>
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-        {progress}
-        {followLive}
+        <span className="text-xs tabular-nums text-muted">{deckProgressLabel(deck, views, scanning)}</span>
+        {active && picked !== null && (
+          <button
+            type="button"
+            onClick={() => setPicked(null)}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            Follow live
+          </button>
+        )}
       </div>
-      {body}
+      {/* The stage, the rail as a strip below `lg`, then what was read off the slide. */}
+      <div className="grid gap-5">
+        {slideColumn && (
+          <div className="min-w-0">
+            {currentView ? (
+              <SlideStage
+                view={currentView}
+                total={views.length}
+                image={thumbs.large[current] ?? imageFor(current)}
+                aspect={aspect}
+                onChange={setPicked}
+                found={found}
+                blank={
+                  images ? null : (
+                    <p className="text-sm text-muted">
+                      {pdf
+                        ? "No slide images: the stored PDF couldn't be opened."
+                        : "No slide images: there's no PDF stored for this analysis."}
+                    </p>
+                  )
+                }
+              />
+            ) : (
+              <div aria-hidden className="animate-pulse rounded-lg bg-ink/[0.06]" style={{ aspectRatio: aspect }} />
+            )}
+          </div>
+        )}
+
+        {slideColumn && <div className="min-w-0 lg:hidden">{rail("strip")}</div>}
+
+        <div className={`min-w-0 space-y-5 ${slideColumn ? "border-t border-ink/10 pt-5" : ""}`}>
+          {unmapped && deck?.unassigned ? (
+            <UnplacedText text={deck.unassigned} label="Everything it read, as one block" />
+          ) : currentView ? (
+            <SlideDetail key={current} view={currentView} active={active} highlight={found ? (stop?.key ?? null) : null} />
+          ) : (
+            waiting && <p className="text-sm text-muted">Opening the deck…</p>
+          )}
+
+          {!unmapped && deck?.unassigned && (
+            <UnplacedText text={deck.unassigned} label="Text before the first slide marker" />
+          )}
+
+          {via && <p className="text-xs text-muted">Read with {via}.</p>}
+        </div>
+      </div>
       {slideColumn &&
+        sidebar &&
         createPortal(
           <>
             <p className="px-4 pb-2 pt-4 text-xs font-medium text-muted">Slides</p>
@@ -253,6 +210,6 @@ export default function DeckSection({
           </>,
           sidebar,
         )}
-    </div>
+    </>
   );
 }

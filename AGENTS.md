@@ -70,7 +70,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `app/` | Routes (see [Routes](#routes)). `app/api/analyze/route.ts` starts a run; `app/api/analyses/[id]/route.ts` saves a memo edit; `app/mcp/route.ts` is the MCP server endpoint |
 | `proxy.ts` | Next 16's replacement for middleware (exports `proxy`, always on Node). Refreshes the Supabase session cookies on every request except static assets, `/mcp` and `/.well-known/*`. Sends signed-out and anonymous visitors from `/dashboard` and everything under it to `/sign-in?next=<path>`. Does nothing when Supabase isn't configured |
 | `features/<product>/` | One folder per product: its types, form slice, live state, prompts, parser, pipeline stage and UI. Rules in `features/README.md` |
-| `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
+| `lib/core/` | The kernel, which knows no product. Stage runner (`stage.ts`, which sends a `stage` event as each stage starts, finishes or fails), core events, field parsing and source priority (`parse.ts`), `fillFields`, `withDeckContext`, `reportUsage` |
 | `lib/diligence/` | Pipeline composition. The full form type and event union (`types.ts`), blank form and memo sections (`form-schema.ts`), the reducer every client and the server fold events with (`stream-state.ts`), the stage list (`engine.ts`), the browser's NDJSON reader (`stream.ts`, `readProgressStream`), a person's memo edits (`edits.ts`: `MemoEdit`, `applyMemoEdit`, `EDITABLE_KEYS`, `PICKABLE_SOURCES`), applied the same way in the browser and by the PATCH route, and the slides each deck value was read from (`evidence.ts`, `citedSlides`), which every view that lists slides reads |
 | `lib/analyses/` | Runs and storage. `run.ts` (one analysis end to end), `persist.ts` (server writer, rate limits), `store.ts` (browser reads and deletes under RLS, plus signed deck URLs and `getRunClaim`), `markdown.ts` (the report as markdown, for MCP), `status.ts`, `hash.ts`, `pdf-source.ts`, `pending-deck.ts`, `legacy.ts`. The list views never load `state`: `SUMMARY_COLUMNS` (`store.ts`) pulls only `startedAt` and `verdict` out of the jsonb, plus the `deck_path` column for the cards' covers, so anything else a card, list row or dashboard metric shows must be added there as a jsonb path |
 | `lib/llm/` | Provider adapters (`claude.ts`, `gemini.ts`) and `pricing.ts`. `claude.ts` maps each stage's thinking level to Claude's effort and thinking params per model (`thinkingParams`), picks the web search tool version per model, and throws on a refusal |
@@ -83,7 +83,7 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `lib/routes.ts` | Page paths and page lists only: `ROUTES`, `analysisPath`, `deckSlidePath`, `signInPath`, `safeNext`, `isDashboardPath` (what `proxy.ts` gates), `DASHBOARD_PAGES` (the sidebar's dashboard links), `PRODUCTS` (the nav bar's Products menu), and the slide param helpers. API, `/auth/*` and `/mcp` paths are written inline where they're used, and `supabase/templates/*.html` hardcode `/auth/confirm`, `/dashboard` and `/dashboard/account/password` |
 | `lib/samples/airbnb.ts` | The sample deck, pre-transcribed so it skips OCR. `coverPage` is the page its card shows (2, since page 1 is a laptop mockup) |
 | `lib/supabase/` | Browser, server, admin and bearer-token clients, plus row types |
-| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis and its memo edits), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections, status and summary). `MemoToolbar` (the memo header's save status and download), `MemoExportButton` and `MemoPdf` (the memo as a PDF, loaded on click). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the dev cost sidebar, and a right-hand column under the header that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview`, `ProductView`, `ReportView`, `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
+| `components/features/analyze/` | UI composition and the analysis shell. `AnalysisProvider` (the live run), `ReportProvider` (the open analysis and its memo edits), `reportSections.tsx` (section registry), `productTabs.tsx` (each page's sections and status). `MemoToolbar` (the memo header's save status and download), `MemoExportButton` and `MemoPdf` (the memo as a PDF, loaded on click). `AnalysisLauncher` (the landing page's two dropzones), `AnalysisFrame` (the layout around every analysis page: loading and missing states, the failure banner, the page pills below `lg`, the dev cost sidebar, the scroll back to the top on each new page, which leaves a link to a section such as `results#feedback` to Next, and a right-hand column the screen's full height that a page can portal its own sidebar into through `useAnalysisAside`, shown from `lg` up only once something is in it), `AnalysisOverview` (an analysis's front page: the company, the verdict as one line that links to Results, what the run is doing and how long it has taken, the run log, and once the run ends a link to every page), `VerdictLine` (the call in a line, which the overview and the Summary share), `SummaryView` (the Summary page: the call, the six ratings, the memo's key facts, the top three competitors and the three worst feedback items, each block linking to its page), `RunLog` (the run top to bottom, one chapter per stage in `CHAPTERS`, each with a few lines of what it found that link to its page; `chapterStatus`), `ProductView` (one page: the sections `PRODUCT_TABS` lists for it, stacked), `useLiveRun`, `DevCostSidebar`. `NewAnalysisActions` (the dashboard pages' New analysis and sample buttons, plus a PDF dropped anywhere on the page, and in dev the free replay button). `replay/airbnbReplay.ts` (the scripted run of the sample that `AnalysisProvider.replaySample` plays, dev only). `DashboardHome` (metrics, six recent cards), `AnalysisWorkspace` (the `/dashboard/analyses` body: every analysis as cards or a list, with delete and clear all). `AnalysisCard` (a saved analysis with its deck's cover), `AnalysisRow` (the same as a list line), `AnalysisStatusBadge`, `DeleteAnalysisButton`, and `deckSource.ts` (`savedDeckSource`, where a saved analysis's PDF comes from, which `ReportProvider` uses too; `coverPageOf`) |
 | `components/app-shell/` | Dashboard layout and sidebar. The sidebar swaps to an analysis's tabs when one is open |
 | `components/features/{auth,hero,landing,model}/` | Sign-in and accounts, the landing page, and the `/dashboard/model` explainer |
 | `components/report/`, `components/ui/` | Shared primitives (`Row`, `Skeleton`, `SourceBadge`, `SourceLegend`, `SourcePicker`, `SourceRow`, `SlideChips`, `EditableText`, `SearchList`; `Card`, `Dropzone`, whose `deckFileError` is the PDF type and size check `NewAnalysisActions` reuses). The only components a product's `ui/` may import |
@@ -102,8 +102,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 | `/auth/callback`, `/auth/confirm` | OAuth code exchange; email links |
 | `/dashboard` | New analysis and sample buttons in the header (a PDF dropped anywhere on the page runs too), the legacy import prompt, "at a glance" metrics, then the six most recent analyses as cover cards |
 | `/dashboard/analyses` | The same header buttons and the legacy import prompt, then every analysis as cover cards or a list (the choice is kept in localStorage, `sevenfold:analyses-view`), each deletable, plus Clear all |
-| `/dashboard/analyses/<id>` | Overview: the verdict, plus one card per page showing how far it got |
-| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`deck`, `memo`, `founders`, `landscape`, `results`, `report`). Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. Research has no page: its Sources close the memo page. The deck page takes `?slide=N` |
+| `/dashboard/analyses/<id>` | Overview: the company, the verdict once there is one, and the run as a log, one chapter per stage in the order it runs, live while it goes. Each line links to the page that has it in full. Once the run ends, a link to every page |
+| `/dashboard/analyses/<id>/<slug>` | One page of the analysis (`summary`, `deck`, `memo`, `founders`, `landscape`, `results`). `summary` glimpses the others on one page and belongs to no product. Most pages are one product's; `results` holds the verdict, the scorecard and the feedback, in that order. Research has no page: its Sources close the memo page. The deck page takes `?slide=N` |
 | `/dashboard/model`, `/dashboard/rubric` | Invest-model explainer; the playbook |
 | `/dashboard/account` | Profile, password link, data export, account deletion |
 | `/dashboard/account/password` | Set or change the password |
@@ -123,8 +123,8 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
 - Old paths redirect (307) to their dashboard pages (`next.config.ts`):
   `/due-diligence/*`, `/dashboard/due-diligence/*`, `/model`, `/playbook`,
   `/account/*`, an analysis's `scorecard` and `feedback` pages (both go to its
-  `results` page), and its `research` page (to its `memo` page). Don't reuse
-  them.
+  `results` page), its `research` page (to its `memo` page) and its `report`
+  page (to its overview). Don't reuse them.
 
 ### How a run works
 
@@ -161,6 +161,9 @@ and `app/` sits on top. `npm run lint` enforces part of this; see
    - deck-reader reads the PDF: embedded text first, vision OCR if needed.
    - Then the engine runs `STAGES` (`lib/diligence/engine.ts`). Every stage
      mutates one shared `ctx.form` and emits events.
+   - The deck read and every stage send a `stage` event (`start`, then `done`
+     or `failed`; the deck read's id is `deck`). The overview's run log reads
+     them.
    - Finally it sends one `report` event and the recorder's `finish()`.
 4. Each event goes two ways:
    - Streamed to the browser, where `streamReducer` folds it into
@@ -197,8 +200,8 @@ MCP runs (`lib/mcp/server.ts`: `analyze_deck`, `get_analysis`,
 
 ### Editing a memo
 
-A finished memo can be edited in place, on the memo page and in the full
-report. The Founders page shows the same cells read-only.
+A finished memo can be edited in place, on the memo page. The Founders page
+shows the same cells read-only.
 
 - `ReportProvider` exposes `canEdit`, `editMemo` and `saveStatus`.
   - `canEdit` needs a report that isn't running: a run in this tab once it's
@@ -290,9 +293,14 @@ as soon as the stages it `needs` are done.
 - Phases come only from extract (`extracting`), research (`researching`),
   complete (`completing`), verdict (`verdict`) and the engine's closing
   `done`. Feedback's `status` and verdict's `waitingStatus` reuse
-  `completing`; scorecard and landscape set none. So the stepper reads
-  "Completing form", and the memo and founders tabs read running, until
-  verdict starts.
+  `completing`; scorecard and landscape set none. So the run's progress
+  (`useLiveRun`, `CurrentAnalysisCard`, MCP's) reads "Completing form", and
+  the memo and founders tabs read running, until verdict starts. The
+  overview's run log goes by `stage` events instead, so it shows each stage
+  as it really starts and ends.
+- A stage that throws sends `failed` only when the run wasn't cancelled. A
+  stage a critical failure or a cancel cut short sends nothing more, and one
+  the run never reached sends nothing at all.
 - `RESEARCH_MAX_SEARCHES` (`getResearchMaxSearches()`) sets landscape's
   search budget and the Claude adapter's `max_uses`. Research's own prompt
   ignores it and says "at most 3".
@@ -317,6 +325,16 @@ as soon as the stages it `needs` are done.
   sources are `form.sources`, a direct `ctx.form` write with no event of its
   own, so before the `report` event (or in a run that stopped short) they
   exist only in `state.searches`.
+- `state.stages` maps a stage id (`deck` for the deck read) to its
+  `StageTiming`: `start` and `end` in ms since `startedAt`, and `failed`.
+  - The reducer stamps them with its own clock as it folds each `stage`
+    event, so the saved copy and the browser's differ by the stream's delay.
+  - It keeps at most `MAX_STAGES` (24) ids.
+  - Reports from before it have no `stages`. `RunLog` then counts a chapter
+    done when its product left something (each `CHAPTERS` entry's `has`).
+    One that left nothing didn't finish if the run stopped, as the sidebar
+    reads it, and is otherwise not in the report. So is the deck or landscape
+    chapter of a report from before that product (`tabAbsent`).
 - Field sources are `deck`, `web`, `inferred`, `unknown` and `personal`
   (`FieldSource`, `lib/core/types.ts`). `personal` is a person's own edit and
   isn't in `VALID_SOURCES`, so a model can't claim it: a source a model sends
@@ -553,6 +571,13 @@ command. Don't edit `.claude/launch.json` without asking the owner.
     at its first model call with every product left "Didn't finish", so it
     costs nothing.
   - Nothing is saved, but a run with a key still costs money.
+- A live run's UI can be checked for free in dev: the dashboard pages'
+  "Replay sample (free, dev)" button plays a scripted run of the sample deck
+  (`replay/airbnbReplay.ts`) under the id `replay-airbnb` (`REPLAY_ID`). It
+  makes no request and saves nothing, a reload drops it, and it can't be
+  edited. It plays at 2× real time; set `sevenfold:replay-speed` in
+  localStorage to change that. The button is on the gated dashboard, so a
+  browser agent reaches it only with accounts off.
 - There's no demo mode, so saved report pages can't be checked without real
   data. Say so instead of guessing.
 - The memo's PDF can be checked without a browser or a run: render `MemoPdf`
@@ -639,8 +664,8 @@ but not all.
    - Add the product's section to `DD_SECTIONS` only if the memo's
      `extract`/`complete` stages should fill its fields. A section there
      feeds both prompts' field list, the research gaps, the memo page and its
-     field count, the chapters nav, the deck page's field evidence and the
-     markdown. Only a section titled "Scorecard" is kept off the memo
+     field count, the overview's memo lines, the deck page's field evidence
+     and the markdown. Only a section titled "Scorecard" is kept off the memo
      (`DOC_SECTIONS`).
    - Keys that aren't plain text cells need a `FIELD_HANDLERS` entry. It
      skips source priority ([Saved data](#saved-data-worth-knowing)), so add
@@ -688,19 +713,28 @@ but not all.
 9. **`components/features/analyze/reportSections.tsx`:**
    - Add a `REPORT_SECTIONS` entry whose `available` guards against an absent
      slice.
-   - Array order is the full report's order.
-   - `pageOnly` keeps a section off the full report.
-   - `ReportEnv` carries the PDF, the slide links and `aside`, the page's
-     right-hand column (null on the full report).
+   - A page shows its sections in the order its `PRODUCT_TABS` entry lists
+     them, not this array's.
+   - `ReportEnv` carries the PDF, the slide links, `pageHref` (a link to
+     another page of the analysis) and `aside`, the page's right-hand column
+     (null until the frame has drawn it).
+   - If the product has a headline worth a glance, add a block to
+     `SummaryView`, with what it shows while running and when it's missing.
 10. **`lib/products.ts`:** add a `PRODUCT_PAGES` entry for the product's own
-    page, before `report`. Array order is the order of the sidebar tabs and
-    the narrow-screen pills. A product can share a page instead: verdict,
+    page. Array order is the order of the sidebar tabs, the narrow-screen
+    pills and the overview's closing links; Summary stays first. A product can share a page instead: verdict,
     scorecard and feedback all sit on `results`, so a new product there only
     adds its section id to that `PRODUCT_TABS` entry.
-11. **`components/features/analyze/productTabs.tsx`:**
-    - Add a `PRODUCT_TABS` entry with sections, status, summary and `absent`.
+11. **`components/features/analyze/productTabs.tsx` and `RunLog.tsx`:**
+    - Add a `PRODUCT_TABS` entry with sections, status and `absent`.
     - Add an icon to `ProductTabIcon`. Nothing checks it, and a missing one
       leaves a blank gap.
+    - Add a `CHAPTERS` entry to `RunLog.tsx`, with the stage's id, at its
+      place in the run: what it waits on, its page link, `has` (for reports
+      with no `stages`) and the lines it shows. Nothing checks this either,
+      and a stage with no entry runs unseen on the overview.
+    - To see it in the dev replay, add its events to
+      `replay/airbnbReplay.ts`.
 12. **`lib/analyses/markdown.ts` `renderReport`:** add a `renderX` line so MCP
     users see the product.
 13. **`next.config.ts`:** if the stage reads files at run time, add
@@ -759,15 +793,14 @@ What exists, with known gaps. Slugs are the product page paths.
 
 | Product | Slug | What it does | Known gaps |
 | --- | --- | --- | --- |
-| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, straight on the page with no card, and under it its text beside the memo fields taken from it: deck values only, on the pages that hold up against their text (`citedSlides`). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar under the header from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. Each thumbnail shows its number in its top-right corner, after an accent dot when a field cites the slide; a page with no image yet is an empty frame. The full report, where the other sections are cards, keeps the Deck section in a card, with the rail down its right on a wide card. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`. A live run moves it along as pages are read, then to each field's first slide as it's cited, about eight seconds for them all (`findDwell`). A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. The citation check is a word match: it can drop the right page for a value the model reworded, and keep a wrong one that shares one word with it. Not in the MCP markdown. No export. No fallback OCR model |
+| **Deck reader** (`deck-reader/`) | `deck` | Reads the PDF page by page (embedded text, then vision OCR). The page shows one slide big, straight on the page with no card, and under it its text beside the memo fields taken from it: deck values only, on the pages that hold up against their text (`citedSlides`). A thumbnail rail of every slide, to pick from, is the page's own right-hand sidebar from `lg` up (`ReportEnv.aside`), and a strip under the slide below that. Each thumbnail shows its number in its top-right corner, after an accent dot when a field cites the slide; a page with no image yet is an empty frame. The arrow keys move the slide once it has focus; there are no on-screen arrows. Opens on slide 1, or a given slide with `?slide=N`. A live run moves it along as pages are read, then to each field's first slide as it's cited, about eight seconds for them all (`findDwell`). A value or founder a person edited (`personal`) isn't listed. Also draws the cover the analysis cards show (`ui/cover.ts`, `ui/DeckCover.tsx`): page 1, or a sample's `coverPage`, drawn in the browser and kept in IndexedDB (`sevenfold-covers`, at most 200), so a browser downloads each deck's PDF once | MCP runs have no stored PDF, so no slide images (the page says so) or cover (their cards show the name's initial). A cover that fails to draw isn't retried until a reload. The citation check is a word match: it can drop the right page for a value the model reworded, and keep a wrong one that shares one word with it. Not in the MCP markdown. No export. No fallback OCR model |
 | **Memo** (`memo/`) | `memo` | The DD memo (company, team, problem, solution, market), filled from the deck (`extract`), then the gaps from the web (`complete`). Every field shows its source, and a deck one links to the slides it came from (the citations that hold up against the slides' text, `citedSlides`). Every value can be edited in place, and its badge switched between deck, web, inference and personal ([Editing a memo](#editing-a-memo)). Downloads as a PDF. The page ends with research's Sources | A rerun replaces every edit. Two tabs editing one memo: the later save wins for the same cell (or the founders list as a whole), and each tab sees the other's edits only after its own next save. No undo or edit history. Not editable during a run, signed out or with accounts off. The PDF prints characters outside Western European text as "?" and drops emoji |
 | **Founders** (`founders/`) | `founders` | Founders with role and background, how they met, cap table. Filled by the memo stages. Research's prompt also verifies the founders, and `computeGaps` (`form-schema.ts`) adds a founders gap when the list is empty. Each founder shows its source and, from the deck, the slides cited. Editable in the memo | No research of its own. The Founders page is read-only. One source per founder, not per detail. In an older report, founders with no source lose their deck badge when no `founders` citation holds up |
-| **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page and the full report: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
+| **Research** (`research/`) | (on `memo`) | Web research aimed at the deck's gaps. One Sources card (`ResearchSources`) closes the memo page: the searches with their sources, and the notes, collapsed | Its prompt hardcodes "at most 3" searches, so on Gemini it ignores `RESEARCH_MAX_SEARCHES`. Competitors are searched again by landscape. Its notes and searches aren't in the MCP markdown, only its sources |
 | **Landscape** (`landscape/`) | `landscape` | Searches for competitors, plots 5–8 of them (at most 10) with the startup on two chosen axes, and ranks the top three. The page puts the map beside the summary and what each axis means, compares the top three in a table (why each competes, how the startup differs), and lists the rest underneath. Hovering or focusing a company in the lists picks it out on the map, and hovering a logo picks out its row. Non-critical, so a failure leaves the rest of the report intact | No editing of axes or competitors, no rerun. Its findings don't reach the memo or the scorecard |
 | **Scorecard** (`scorecard/`) | `results` | Six 1–5 ratings plus funding raised. Shares the Results page with the verdict (above it) and the feedback (below it) | Per analysis only, no tracking across analyses. The rating keys are listed by hand in `stage.ts` and `prompts.ts` (both with `funding`), `ui/ScorecardPanel.tsx` and `lib/invest/model.ts`, rather than read from `SCORECARD_METRIC_KEYS` (`form.ts`, the six ratings without `funding`) |
 | **Feedback** (`feedback/`) | `results` | Critical, warning and strength items on the deck (the prompt asks for 5–10). Each links to the slides it cites | Its own prompt and its checklist (`checklist.ts`, 10 categories, read only by the prompt) are thin and lean on the shared playbook. Nothing in code caps the item count; only the reply's `WRITE_MAX_TOKENS` budget limits it. The MCP markdown drops the slide links |
 | **Verdict** (`verdict/`) | `results` | Invest/pass from the ONNX model trained on real deal data. No LLM, no cost | — |
-| **Full report** | `report` | Every section on one page, with a chapters nav. Its memo can be edited and downloaded as on the memo page | — |
 
 ### Platform
 
@@ -784,16 +817,40 @@ What exists, with known gaps. Slugs are the product page paths.
   asks to confirm.
 - **Inside an analysis:**
   - Each page is a sidebar tab with a status dot (verdict, scorecard and
-    feedback share the Results tab, and research shows on Memo):
+    feedback share the Results tab, and research shows on Memo; Summary has
+    no product, and reads ready once any page has something):
     - ready
     - running
     - didn't finish: it failed, or the run stopped before reaching it
     - not in this report: an old report from before the product, or nothing
       was found
-  - The overview has one card per page.
+  - The overview is the run as a vertical log: one chapter per stage, in the
+    order it runs, each waiting, working, done, failed, stopped, didn't run
+    or not in this report, with a few lines of what it found. Every line
+    links to the page or slide that holds it. Once there is a verdict, the
+    overview's title block gives it one line (the call, then the score and
+    the gate, or an older report's chance of investing) that links to the
+    Results page, where `VerdictPopup` shows it in full. When the run ends, a
+    closing block links to every page. The memo
+    chapter's deck count and gaps read the memo as it ends up, so a deck
+    value that `complete` replaced with a web one counts as not from the deck:
+    nothing saved says which fields `extract` filled.
+  - The Summary page is the report on one page, as a column of blocks
+    split by hairlines: the call with the company's description, the six
+    ratings as dots, the memo's problem, solution, traction and team, the
+    top three competitors (no block in a report from before the landscape),
+    and the first three critical or warning feedback items. Each block links
+    to its page, pulses while the run is on its way to it, and says what's
+    missing once the run is over.
   - Narrow screens get the tabs as pills.
+  - Pages have no header bar: a page starts with its own title. The way back
+    to every analysis is the sidebar's All analyses link, in the menu drawer
+    below `lg`.
 - **Live runs:**
-  - Streamed over NDJSON with a phase stepper.
+  - Streamed over NDJSON. While you're on the run, the overview's log and
+    its tabs' status dots show how far it got; from other pages, the nav bar,
+    the sidebar's run link and the dashboard's current-run card show its
+    phase.
   - A run survives moving between pages.
   - Runs started elsewhere are polled.
   - With accounts on, a deck that already has a finished analysis opens it
@@ -827,7 +884,8 @@ What exists, with known gaps. Slugs are the product page paths.
   closing call-to-action. Each section, and the footer, sits on its own solid
   sheet (`bg-sheet`) inset over the dot grid like the hero card; the layout
   rule is the comment at the top of `app/(marketing)/page.tsx`.
-- **Dev only:** a cost sidebar with per-stage cost during a live run.
+- **Dev only:** a cost sidebar with per-stage cost during a live run, and a
+  free scripted replay of the sample deck's run.
 
 Not built: rerunning a single product, saved usage or cost history, a demo
 mode, and JS tests.
@@ -864,3 +922,10 @@ mode, and JS tests.
   on its own, but that's unconfirmed.
 - The live database has two migrations the repo lacks
   ([Database](#database)).
+- Next 16.2 keeps the hash of a page's first visit in the URL on later
+  visits (`results#feedback#scorecard`, or `results#feedback` from a link
+  with none): its route cache stores the URL with the hash, and
+  `segment-cache/navigation.js` appends the new one. Next still scrolls to
+  the section the link asked for. A link with no hash then opens the page
+  24px down, at its title rather than the frame's top, since `AnalysisFrame`
+  takes the stale hash for a link to a section.

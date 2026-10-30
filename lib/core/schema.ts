@@ -27,9 +27,9 @@ export interface FormSection {
 }
 
 /**
- * Stable anchor id for a document sub-section, shared by the rendered section
- * and the chapters nav so scroll-spy / jump-links line up. e.g. "Company
- * Overview" → "doc-company-overview".
+ * Stable anchor id for a document sub-section, so a link can open the memo at
+ * it (`memo#doc-company-overview`). e.g. "Company Overview" →
+ * "doc-company-overview".
  */
 export function sectionSlug(title: string): string {
   return "doc-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
