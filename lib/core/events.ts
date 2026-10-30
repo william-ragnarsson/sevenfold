@@ -18,7 +18,12 @@ export type CoreEvent =
   /** Token usage + cost for one LLM call. Dev-only — never sent in production. */
   | { type: "usage"; stage: string; usage: TokenUsage; costUsd: number }
   /** Terminal failure event. */
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  /**
+   * A stage started, finished or failed. `id` is the stage's id, or "deck" for
+   * reading the deck. A stage the run never reached sends nothing.
+   */
+  | { type: "stage"; id: string; state: "start" | "done" | "failed" };
 
 /** How a stage reports progress. Typed on the events it may send. */
 export type Emit<E = CoreEvent> = (event: E) => void;

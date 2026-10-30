@@ -54,6 +54,8 @@ const nextConfig: NextConfig = {
       // An analysis's Scorecard and Feedback pages became its Results page.
       { source: "/dashboard/analyses/:id/scorecard", destination: "/dashboard/analyses/:id/results", permanent: false },
       { source: "/dashboard/analyses/:id/feedback", destination: "/dashboard/analyses/:id/results", permanent: false },
+      // The Full report page is gone; its links open the overview.
+      { source: "/dashboard/analyses/:id/report", destination: "/dashboard/analyses/:id", permanent: false },
     ];
   },
 

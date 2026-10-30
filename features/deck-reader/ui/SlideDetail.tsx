@@ -1,6 +1,5 @@
 "use client";
 
-import { SourceBadge } from "@/components/report/SourceBadge";
 import { MAX_SLIDE_CHARS } from "@/features/deck-reader/state";
 import type { SlideStatus, SlideView } from "./selectors";
 
@@ -11,14 +10,15 @@ const NOT_READ: Partial<Record<SlideStatus, string>> = {
 };
 
 function Heading({ children }: { children: string }) {
-  return <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink/40">{children}</p>;
+  return <h3 className="mb-2 text-xs font-medium text-muted">{children}</h3>;
 }
 
 /**
  * What the reader took off one slide and the form fields the model says came
  * from it, side by side when there's room. This is the place to check what the
- * AI actually saw when a field looks wrong. Remount it (via `key`) per slide,
- * so a highlight replays.
+ * AI actually saw when a field looks wrong. Every field listed is a deck value
+ * (`findingsBySlide`), so none carries a source badge. Remount it (via `key`)
+ * per slide, so a highlight replays.
  */
 export default function SlideDetail({
   view,
@@ -33,12 +33,12 @@ export default function SlideDetail({
 }) {
   return (
     <div className="@container">
-      <div className="grid gap-5 @xl:grid-cols-2">
+      <div className="grid gap-6 @xl:grid-cols-2">
         <div className="min-w-0">
           <Heading>What it read</Heading>
           {view.text ? (
             <>
-              <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-paper-2/60 p-3 font-mono text-xs leading-relaxed text-ink/80">
+              <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-ink/70">
                 {view.text}
               </pre>
               {view.truncated && (
@@ -55,15 +55,16 @@ export default function SlideDetail({
         <div className="min-w-0">
           <Heading>What it extracted</Heading>
           {view.findings.length > 0 ? (
-            <ul className="space-y-3">
+            <dl className="space-y-3 text-sm">
               {view.findings.map((f) => (
-                <li key={f.key} className="text-sm">
-                  <span className={`font-semibold text-ink ${f.key === highlight ? "cell-pop" : ""}`}>{f.label}</span>
-                  <SourceBadge source={f.source} />
-                  <p className="mt-0.5 line-clamp-6 leading-relaxed text-ink/70">{f.value}</p>
-                </li>
+                <div key={f.key}>
+                  <dt className="text-xs text-muted">
+                    <span className={f.key === highlight ? "cell-pop" : undefined}>{f.label}</span>
+                  </dt>
+                  <dd className="mt-0.5 line-clamp-6 leading-relaxed text-ink/80">{f.value}</dd>
+                </div>
               ))}
-            </ul>
+            </dl>
           ) : (
             <p className="text-sm text-muted">
               {view.status === "pending" || view.status === "reading"

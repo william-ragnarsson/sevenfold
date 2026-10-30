@@ -4,7 +4,7 @@
  * Claude reads these instead of the raw `AnalysisState`: the state is built for
  * a live UI (note deltas, step flags, highlight keys) and is several times the
  * size, while a tool result has a budget (~150k characters on claude.ai, 25k
- * tokens by default in Claude Code). The full interactive report stays one link
+ * tokens by default in Claude Code). The analysis in the app stays one link
  * away.
  */
 
@@ -53,7 +53,7 @@ export function renderReport(state: AnalysisState, { url, name }: { url: string;
 
   out.push(`# ${company} — SevenFold due diligence`, "");
   out.push(`**Verdict:** ${describeVerdict(verdict)}`);
-  out.push(`**Full interactive report:** ${url}`, "");
+  out.push(`**Open in SevenFold:** ${url}`, "");
 
   out.push("## Scorecard", "");
   out.push(`| ${SCORECARD_METRIC_KEYS.map((k) => SCORE_LABELS[k]).join(" | ")} |`);
@@ -257,7 +257,7 @@ function renderSources(sources: Source[]): string[] {
     const entry = domainOf(s.url) ? `[${s.title || s.url}](${s.url})` : s.title || "Web source";
     out.push(`${i + 1}. ${entry}`);
   });
-  if (sources.length > MAX_SOURCES) out.push(`…and ${sources.length - MAX_SOURCES} more in the full report.`);
+  if (sources.length > MAX_SOURCES) out.push(`…and ${sources.length - MAX_SOURCES} more in SevenFold.`);
   out.push("");
   return out;
 }

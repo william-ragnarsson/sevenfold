@@ -24,10 +24,37 @@ import {
   listAnalyses,
   type AnalysisSummary,
 } from "@/lib/analyses/store";
-import type { SampleDeck } from "@/lib/samples/airbnb";
-import { pdfFromFile, type PdfSource } from "@/lib/analyses/pdf-source";
+import { AIRBNB_SAMPLE, type SampleDeck } from "@/lib/samples/airbnb";
+import { pdfFromFile, pdfFromUrl, type PdfSource } from "@/lib/analyses/pdf-source";
 
 const EMPTY_HISTORY: AnalysisSummary[] = [];
+
+/**
+ * The id a replay runs under (`replaySample`). Not the sample's own hash, so a
+ * replay never stands in for a saved run of the sample.
+ */
+export const REPLAY_ID = "replay-airbnb";
+
+/** How many times faster than real time a replay plays; set `sevenfold:replay-speed` to change it. */
+function replaySpeed(): number {
+  try {
+    const speed = Number(localStorage.getItem("sevenfold:replay-speed"));
+    return speed > 0 ? speed : 2;
+  } catch {
+    return 2;
+  }
+}
+
+/** Resolves after `ms`, or as soon as `signal` aborts. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener("abort", () => {
+      clearTimeout(timer);
+      resolve();
+    }, { once: true });
+  });
+}
 
 type Status = "idle" | "loading" | "done" | "error";
 
@@ -52,6 +79,11 @@ interface AnalysisContextValue {
   start: (opts?: { force?: boolean; file?: File }) => void;
   /** Start analysis for a built-in sample deck — no upload, no file needed. */
   startSample: (sample: SampleDeck, opts?: { force?: boolean }) => void;
+  /**
+   * Dev only: play a scripted run of the sample deck under `REPLAY_ID`, with
+   * no request and no model call, for working on the live run's UI for free.
+   */
+  replaySample: () => void;
   /** Aborts an in-flight run (if any) and clears back to the dropzone state. */
   stop: () => void;
   history: AnalysisSummary[];
@@ -84,6 +116,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const [stream, dispatch] = useReducer(streamReducer, undefined, initialState);
   const abortRef = useRef<AbortController | null>(null);
+  const replayRef = useRef<AbortController | null>(null);
   const router = useRouter();
 
   const userId = user?.id ?? null;
@@ -138,6 +171,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
       // decides it is showing a live run from `currentId`, so navigating
       // without setting it flashes "This analysis isn't available" until the
       // lookup returns.
+      replayRef.current?.abort();
       setCurrentId(id);
       setStatus("loading");
       setError("");
@@ -241,8 +275,36 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     [run, deferUntilSignedIn],
   );
 
+  const replaySample = useCallback(async () => {
+    if (process.env.NODE_ENV === "production") return;
+    // A start like any other: it takes over from whatever was running.
+    abortRef.current?.abort();
+    replayRef.current?.abort();
+    const controller = new AbortController();
+    replayRef.current = controller;
+    setCurrentId(REPLAY_ID);
+    setStatus("loading");
+    setError("");
+    setFileState(null);
+    setLocalDeck(pdfFromUrl(AIRBNB_SAMPLE.pdfPath, REPLAY_ID));
+    dispatch({ type: "reset" });
+    router.push(analysisPath(REPLAY_ID));
+
+    const { buildAirbnbReplay } = await import("./replay/airbnbReplay");
+    const speed = replaySpeed();
+    const begun = performance.now();
+    for (const { at, event } of buildAirbnbReplay()) {
+      const wait = at / speed - (performance.now() - begun);
+      if (wait > 0) await sleep(wait, controller.signal);
+      if (controller.signal.aborted) return;
+      dispatch({ type: "event", event });
+    }
+    setStatus("done");
+  }, [router]);
+
   const stop = useCallback(() => {
     abortRef.current?.abort();
+    replayRef.current?.abort();
     setStatus("idle");
     setError("");
     setCurrentId(null);
@@ -278,6 +340,7 @@ export default function AnalysisProvider({ children }: { children: ReactNode }) 
     localDeck,
     start,
     startSample,
+    replaySample,
     stop,
     history,
     historyLoading,

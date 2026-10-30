@@ -1,4 +1,3 @@
-import type { FieldSource } from "@/lib/core/types";
 import { FIELD_DESCRIPTORS, readField } from "@/lib/diligence/form-schema";
 import type { DueDiligenceForm } from "@/lib/diligence/types";
 import type { DeckState, DeckVia } from "../types";
@@ -9,12 +8,11 @@ import type { DeckState, DeckVia } from "../types";
  * knows about it.
  */
 
-/** One form field the model said it took from a slide. */
+/** One form field the model said it took from a slide, with its deck value. */
 export interface SlideFinding {
   key: string;
   label: string;
   value: string;
-  source: FieldSource;
 }
 
 export type SlideStatus =
@@ -53,7 +51,7 @@ export function isUnmapped(deck: DeckState): boolean {
  * the model's own inference or a person's edit isn't shown on the slide it
  * replaced; neither are the founders who didn't come from the deck.
  */
-function findingValue(form: DueDiligenceForm, key: string, kind: string): { value: string; source: FieldSource } | null {
+function findingValue(form: DueDiligenceForm, key: string, kind: string): string | null {
   if (kind === "founders") {
     // A founder with no source is from a report older than founder sources,
     // where a cited list was read off the deck.
@@ -61,32 +59,32 @@ function findingValue(form: DueDiligenceForm, key: string, kind: string): { valu
       .filter((m) => (m.source ?? "deck") === "deck")
       .map((m) => m.name)
       .filter(Boolean);
-    return names.length ? { value: names.join(", "), source: "deck" } : null;
+    return names.length ? names.join(", ") : null;
   }
   if (key === "scorecard.funding") {
     const n = form.scorecard.funding;
-    return n === null ? null : { value: `$${n.toLocaleString("en-US")}`, source: "deck" };
+    return n === null ? null : `$${n.toLocaleString("en-US")}`;
   }
   const field = readField(form, key);
-  return field?.value && field.source === "deck" ? { value: field.value, source: field.source } : null;
+  return field?.value && field.source === "deck" ? field.value : null;
 }
 
 /**
  * Page number → the fields cited from it, in form order. `evidence` is the
  * deck's citations once checked (`citedSlides`, passed in by the report).
  * Fields with no deck value (yet, or any more) are left out, so a tile never
- * shows a chip for nothing.
+ * marks a slide for nothing.
  */
 export function findingsBySlide(evidence: Record<string, number[]>, form: DueDiligenceForm): Map<number, SlideFinding[]> {
   const bySlide = new Map<number, SlideFinding[]>();
   for (const d of FIELD_DESCRIPTORS) {
     const pages = evidence[d.key];
     if (!pages?.length) continue;
-    const found = findingValue(form, d.key, d.kind);
-    if (!found) continue;
+    const value = findingValue(form, d.key, d.kind);
+    if (!value) continue;
     for (const page of pages) {
       const list = bySlide.get(page) ?? [];
-      list.push({ key: d.key, label: d.label, ...found });
+      list.push({ key: d.key, label: d.label, value });
       bySlide.set(page, list);
     }
   }

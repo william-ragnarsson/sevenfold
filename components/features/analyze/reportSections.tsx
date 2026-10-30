@@ -14,7 +14,9 @@ import type { AnalysisState } from "@/lib/diligence/stream-state";
 import { citedSlides } from "@/lib/diligence/evidence";
 import type { MemoEdit } from "@/lib/diligence/edits";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
+import type { ProductSlug } from "@/lib/products";
 import MemoToolbar from "./MemoToolbar";
+import SummaryView from "./SummaryView";
 import type { SaveStatus } from "./ReportProvider";
 
 /** What a section may need beyond the analysis state. */
@@ -25,33 +27,31 @@ export interface ReportEnv {
   slide: number | null;
   /** A link to one slide on this analysis's Deck page. */
   slideHref: (slide: number) => string;
+  /** A link to another page of this analysis, for the Summary's links out. */
+  pageHref: (slug: ProductSlug) => string;
   /** Editing the memo, where it can be edited (see `ReportProvider`). */
   memo?: { edit: (edit: MemoEdit) => void; saveStatus: SaveStatus };
   /**
    * The page's right-hand column (`useAnalysisAside`), for a section's own
    * sidebar: the Deck page puts its slide rail there. It shows from `lg` up,
-   * so a section keeps its own copy inline below that. Null on the full report.
+   * so a section keeps its own copy inline below that. Null until the frame
+   * has drawn it.
    */
   aside: HTMLElement | null;
 }
 
 /**
- * The report section registry — the single place that decides what sections the
- * report has, their order, and their labels. It drives both the stacked content
- * column and the chapters nav of the full report, and each product page draws
- * the sections `productTabs.tsx` lists for it. Adding a section (e.g. a future
- * checklist) is one entry here plus its component.
+ * The report section registry: every section an analysis can show. Each
+ * product page draws the sections `productTabs.tsx` lists for it, in that
+ * order. Adding a section (e.g. a future checklist) is one entry here plus its
+ * component.
  */
-export interface ReportSection {
-  /** Anchor id used for scroll-spy + jump links. */
+interface ReportSection {
+  /** The section's anchor on its page, for links like `results#feedback`. */
   id: string;
-  /** Label shown in the chapters nav. */
-  label: string;
   /** Gate a section until it has real data to show, or the run is still active (skeleton). */
   available: (state: AnalysisState, active: boolean) => boolean;
   render: (state: AnalysisState, active: boolean, env: ReportEnv) => ReactNode;
-  /** Only on its product page — the full report already shows it inside another section. */
-  pageOnly?: true;
 }
 
 /**
@@ -84,14 +84,18 @@ function memoRenderers(state: AnalysisState, env: ReportEnv): Partial<Record<"fo
 
 export const REPORT_SECTIONS: ReportSection[] = [
   {
+    // The other pages in brief; each block says what it's missing.
+    id: "summary",
+    available: () => true,
+    render: (s, active, env) => <SummaryView state={s} active={active} pageHref={env.pageHref} />,
+  },
+  {
     id: "verdict",
-    label: "Verdict",
     available: (s, active) => active || !!s.verdict,
     render: (s, active) => <VerdictPopup verdict={s.verdict} active={active} />,
   },
   {
     id: "deck",
-    label: "Deck",
     // Reports saved before per-slide reading existed have no deck slice.
     available: (s, active) => active || !!s.deck,
     render: (s, active, env) => (
@@ -109,9 +113,7 @@ export const REPORT_SECTIONS: ReportSection[] = [
   },
   {
     id: "founders",
-    label: "Founders",
-    // The memo's founders rows, on their own; the full report has them in the memo.
-    pageOnly: true,
+    // The memo's founders rows, on their own.
     available: () => true,
     render: (s, active, env) => (
       <FoundersPanel form={s.form} active={active} evidence={citedSlides(s)} slideHref={slideHrefFor(s, env)} />
@@ -119,7 +121,6 @@ export const REPORT_SECTIONS: ReportSection[] = [
   },
   {
     id: "feedback",
-    label: "Deck feedback",
     available: (s, active) => active || s.deckFeedback.length > 0,
     render: (s, active, env) => (
       <DeckFeedbackPanel items={s.deckFeedback} active={active} slideHref={slideHrefFor(s, env)} />
@@ -127,13 +128,11 @@ export const REPORT_SECTIONS: ReportSection[] = [
   },
   {
     id: "scorecard",
-    label: "Scorecard",
     available: () => true,
     render: (s, active) => <ScorecardPanel form={s.form} active={active} legacyFunding={!s.fundingInUsd} />,
   },
   {
     id: "landscape",
-    label: "Competitive Landscape",
     // Reports saved before this section have no `landscape` at all. A failed
     // stage stays visible and says why, rather than vanishing when the run ends.
     available: (s, active) => active || !!s.landscape || !!s.landscapeError,
@@ -148,7 +147,6 @@ export const REPORT_SECTIONS: ReportSection[] = [
   },
   {
     id: "document",
-    label: "Document",
     available: () => true,
     render: (s, active, env) => {
       const edit = env.memo?.edit;
@@ -172,9 +170,8 @@ export const REPORT_SECTIONS: ReportSection[] = [
   },
   {
     // Research's searches and notes: where the memo's web answers came from,
-    // so they close the memo (and the report) like a bibliography.
+    // so they close the memo like a bibliography.
     id: "sources",
-    label: "Sources",
     available: (s, active) => active || s.searches.length > 0 || !!s.notes,
     render: (s, active) => <ResearchSources state={s} active={active} />,
   },

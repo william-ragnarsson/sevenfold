@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import Card from "@/components/ui/Card";
 import {
   buildSlideViews,
   citationTour,
@@ -16,7 +15,7 @@ import {
 import type { DeckState } from "@/features/deck-reader/types";
 import type { DueDiligenceForm } from "@/lib/diligence/types";
 import type { PdfSource } from "@/lib/analyses/pdf-source";
-import { findDwell, sweepDwell, useDeckSlide, useDeckThumbnails, useNearViewport, usePacedReveal, useReducedMotion } from "./hooks";
+import { findDwell, sweepDwell, useDeckSlide, useDeckThumbnails, usePacedReveal, useReducedMotion } from "./hooks";
 import SlideStage from "./SlideStage";
 import SlideRail, { type RailLayout } from "./SlideRail";
 import SlideDetail from "./SlideDetail";
@@ -25,11 +24,11 @@ const NO_FINDINGS = new Map<number, SlideFinding[]>();
 
 function UnplacedText({ text, label }: { text: string; label: string }) {
   return (
-    <details className="rounded-2xl border border-ink/10 bg-white/50 px-4 py-3 text-sm">
-      <summary className="cursor-pointer text-muted">
+    <details className="text-xs">
+      <summary className="cursor-pointer text-muted hover:text-ink">
         {label} <span className="tabular-nums text-ink/40">· {text.length.toLocaleString("en-US")} characters</span>
       </summary>
-      <pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-ink/80">
+      <pre className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap break-words font-mono leading-relaxed text-ink/70">
         {text}
       </pre>
     </details>
@@ -37,15 +36,15 @@ function UnplacedText({ text, label }: { text: string; label: string }) {
 }
 
 /**
- * The Deck section of the report: one slide big, every slide as a thumbnail
- * in a rail to pick from, and under the big slide what was read off it and the
- * fields extracted from it. On its own page the rail is the page's right-hand
- * sidebar (`sidebar`); in the full report it runs down the right of the card.
- * Either way, when there isn't room it's a strip between the slide and its
- * text. A saved report opens on slide 1, or the slide a link asks for. While a run is live the stage follows it: page by page as the
- * reader goes through the deck, then to each slide a field is found on, as
- * it's found. Afterwards it stays as a per-slide record of what was read off
- * each page and which fields came from it. Everything shown is derived from
+ * The Deck page: one slide big, every slide as a thumbnail in a rail to pick
+ * from, and under the big slide what was read off it and the fields extracted
+ * from it. It sits straight on the page, and the rail is the page's right-hand
+ * sidebar (`sidebar`) from `lg` up and a strip between the slide and its text
+ * below that. A saved report opens on slide 1, or the slide a link asks for.
+ * While a run is live the stage follows it: page by page as the reader goes
+ * through the deck, then to each slide a field is found on, as it's found.
+ * Afterwards it stays as a per-slide record of what was read off each page and
+ * which fields came from it. Everything shown is derived from
  * `AnalysisState.deck`, the form and the checked citations (`evidence`) by
  * the selectors in `features/deck-reader`; the slide images are drawn in the
  * browser from `pdf` when there is one.
@@ -59,7 +58,7 @@ export default function DeckSection({
   active,
   pdf,
   openSlide = null,
-  sidebar = null,
+  sidebar,
 }: {
   deck: DeckState | undefined;
   form: DueDiligenceForm;
@@ -71,9 +70,10 @@ export default function DeckSection({
   openSlide?: number | null;
   /**
    * The page's right-hand column, to put the rail in. It shows from `lg` up;
-   * below that the rail stays in the card as a strip.
+   * below that the rail is a strip under the slide. Null until the frame has
+   * drawn it.
    */
-  sidebar?: HTMLElement | null;
+  sidebar: HTMLElement | null;
 }) {
   const reducedMotion = useReducedMotion();
   const animate = active && !reducedMotion;
@@ -113,15 +113,13 @@ export default function DeckSection({
   const current = Math.min(Math.max(wanted, 1), Math.max(total, 1));
   const currentView = views[current - 1];
 
-  const stopLabel = stop ? views[stop.slide - 1]?.findings.find((f) => f.key === stop.key)?.label : undefined;
-  const found =
-    following && stop && stop.slide === current ? { id: String(toured), slide: stop.slide, label: stopLabel ?? null } : null;
+  // The latest find, while it's on the stage: the slide glows and the field flashes.
+  const found = animate && following && stop?.slide === current ? String(toured) : null;
 
-  const [nearRef, near] = useNearViewport<HTMLDivElement>();
-  const thumbs = useDeckThumbnails(pdf, near && !!deck);
-  // No PDF stored (MCP runs) or one pdf.js can't open: the tiles show numbers.
+  const thumbs = useDeckThumbnails(pdf, !!deck);
+  // No PDF stored (MCP runs) or one pdf.js can't open: the tiles stay empty.
   const images = !!pdf && thumbs.status !== "error";
-  useDeckSlide(pdf, current, near && !!deck && images && views.length > 0);
+  useDeckSlide(pdf, current, !!deck && images && views.length > 0);
   const aspect = thumbs.aspect ?? 16 / 9;
   const imageFor = (index: number) => thumbs.urls[index - 1] ?? null;
 
@@ -131,8 +129,6 @@ export default function DeckSection({
   // read with no pages at all (pasted text, no markers) has no slide column.
   const waiting = views.length === 0 && !deck?.read;
   const slideColumn = views.length > 0 || waiting;
-  // In the card, a wide one puts the rail beside the slide and its text.
-  const railBeside = slideColumn && !sidebar;
 
   const rail = (layout: RailLayout) => (
     <SlideRail
@@ -146,104 +142,74 @@ export default function DeckSection({
   );
 
   return (
-    <Card
-      eyebrow="Deck"
-      className="fade-up"
-      actions={
-        <>
-          {active && picked !== null && (
-            <button
-              type="button"
-              onClick={() => setPicked(null)}
-              className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent hover:bg-accent/15"
-            >
-              <span aria-hidden className="size-1.5 rounded-full bg-accent step-active" />
-              Follow live
-            </button>
-          )}
-          <span className="text-xs tabular-nums text-muted">{deckProgressLabel(deck, views, scanning)}</span>
-        </>
-      }
-    >
-      <div ref={nearRef} className="@container px-5 pb-5">
-        {/* Rail beside, on a wide card: the stage over the details on the left,
-            the rail the full height of both on the right. Otherwise stage,
-            rail (if it isn't in the page's sidebar), details, one under another. */}
-        <div
-          className={`grid gap-5 ${
-            railBeside ? "@3xl:grid-cols-[minmax(0,1fr)_10rem] @3xl:grid-rows-[auto_1fr]" : ""
-          }`}
-        >
-          {slideColumn && (
-            <div className="min-w-0">
-              {currentView ? (
-                <SlideStage
-                  view={currentView}
-                  total={views.length}
-                  image={thumbs.large[current] ?? imageFor(current)}
-                  aspect={aspect}
-                  onChange={setPicked}
-                  animate={animate}
-                  found={found}
-                  blank={
-                    images ? null : (
-                      <p className="rounded-lg border border-dashed border-ink/15 px-4 py-3 text-sm text-muted">
-                        {pdf
-                          ? "No slide images: the stored PDF couldn't be opened."
-                          : "No slide images: there's no PDF stored for this analysis."}
-                      </p>
-                    )
-                  }
-                />
-              ) : (
-                <div aria-hidden className="animate-pulse rounded-lg bg-ink/[0.06]" style={{ aspectRatio: aspect }} />
-              )}
-            </div>
-          )}
-
-          {railBeside && (
-            // Wide, the rail is laid over this cell so it takes the left column's height and scrolls.
-            <div className="relative min-w-0 @3xl:col-start-2 @3xl:row-span-2 @3xl:row-start-1 @3xl:min-h-96">
-              {rail("auto")}
-            </div>
-          )}
-          {slideColumn && sidebar && <div className="min-w-0 lg:hidden">{rail("strip")}</div>}
-
-          <div className="min-w-0 space-y-5 @3xl:col-start-1">
-            {unmapped && deck?.unassigned ? (
-              <UnplacedText text={deck.unassigned} label="Everything it read, as one block" />
-            ) : currentView ? (
-              <SlideDetail
-                key={current}
+    <>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-xs tabular-nums text-muted">{deckProgressLabel(deck, views, scanning)}</span>
+        {active && picked !== null && (
+          <button
+            type="button"
+            onClick={() => setPicked(null)}
+            className="text-xs font-medium text-accent hover:underline"
+          >
+            Follow live
+          </button>
+        )}
+      </div>
+      {/* The stage, the rail as a strip below `lg`, then what was read off the slide. */}
+      <div className="grid gap-5">
+        {slideColumn && (
+          <div className="min-w-0">
+            {currentView ? (
+              <SlideStage
                 view={currentView}
-                active={active}
-                highlight={found ? (stop?.key ?? null) : null}
+                total={views.length}
+                image={thumbs.large[current] ?? imageFor(current)}
+                aspect={aspect}
+                onChange={setPicked}
+                found={found}
+                blank={
+                  images ? null : (
+                    <p className="text-sm text-muted">
+                      {pdf
+                        ? "No slide images: the stored PDF couldn't be opened."
+                        : "No slide images: there's no PDF stored for this analysis."}
+                    </p>
+                  )
+                }
               />
             ) : (
-              waiting && <p className="text-sm text-muted">Opening the deck…</p>
+              <div aria-hidden className="animate-pulse rounded-lg bg-ink/[0.06]" style={{ aspectRatio: aspect }} />
             )}
-
-            {!unmapped && deck?.unassigned && (
-              <UnplacedText text={deck.unassigned} label="Text before the first slide marker" />
-            )}
-
-            {via && <p className="text-xs text-muted">Read with {via}.</p>}
           </div>
+        )}
+
+        {slideColumn && <div className="min-w-0 lg:hidden">{rail("strip")}</div>}
+
+        <div className={`min-w-0 space-y-5 ${slideColumn ? "border-t border-ink/10 pt-5" : ""}`}>
+          {unmapped && deck?.unassigned ? (
+            <UnplacedText text={deck.unassigned} label="Everything it read, as one block" />
+          ) : currentView ? (
+            <SlideDetail key={current} view={currentView} active={active} highlight={found ? (stop?.key ?? null) : null} />
+          ) : (
+            waiting && <p className="text-sm text-muted">Opening the deck…</p>
+          )}
+
+          {!unmapped && deck?.unassigned && (
+            <UnplacedText text={deck.unassigned} label="Text before the first slide marker" />
+          )}
+
+          {via && <p className="text-xs text-muted">Read with {via}.</p>}
         </div>
       </div>
-
       {slideColumn &&
         sidebar &&
         createPortal(
           <>
-            <div className="flex items-center gap-2 px-4 py-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Slides</span>
-              {views.length > 0 && <span className="ml-auto text-xs tabular-nums text-muted">{views.length}</span>}
-            </div>
+            <p className="px-4 pb-2 pt-4 text-xs font-medium text-muted">Slides</p>
             <div className="relative min-h-0 flex-1">{rail("column")}</div>
           </>,
           sidebar,
         )}
-    </Card>
+    </>
   );
 }
